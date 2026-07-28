@@ -503,3 +503,19 @@ model MotmVote {
   @@unique([pollId, voterId])
   @@map("motm_votes")
 }
+
+// ─── WAITLIST ────────────────────────────────────────────────────────────────
+
+model WaitlistEntry {
+  id        String   @id @default(cuid())
+  guildId   String
+  discordId String
+  username  String
+  position  String
+  region    String
+  note      String?
+  addedAt   DateTime @default(now())
+
+  @@unique([guildId, discordId])
+  @@map("waitlist_entries")
+}
