@@ -4,6 +4,7 @@ import {
   EmbedBuilder,
 } from "discord.js";
 import { contractService } from "../../services/contractService.js";
+import { prisma } from "../../database/prisma.js";
 import { hasRole, RoleType } from "../../utils/permissions.js";
 import { createErrorEmbed } from "../../utils/helpers.js";
 import type { Command } from "../../types/index.js";
@@ -32,6 +33,27 @@ const command: Command = {
 
     try {
       const player = await contractService.releasePlayer(target.id);
+      
+      // Swap roles: remove team role → add Free Agent
+      if (interaction.guild) {
+        try {
+          const member = await interaction.guild.members.fetch(target.id);
+          const faRole = interaction.guild.roles.cache.find(r => r.name === "Free Agent");
+          
+          // Remove team roles
+          const teamRoles = member.roles.cache.filter(r => 
+            r.name === player.team?.name
+          );
+          for (const [, role] of teamRoles) {
+            await member.roles.remove(role, "LFC Release");
+          }
+          
+          // Add Free Agent role if exists
+          if (faRole) {
+            await member.roles.add(faRole, "LFC Release — Free Agent");
+          }
+        } catch(_) {}
+      }
       const embed = new EmbedBuilder()
         .setTitle("🆓 Player Released")
         .setColor("#FFAA00")
