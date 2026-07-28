@@ -13,7 +13,7 @@ for(const[f,c]of Object.entries(F)){
 }
 
 console.log("\n✅ Files created! Installing...");
-e("npm install --ignore-scripts canvas 2>&1 | tail -3",{stdio:"inherit"});
+e("npm install 2>&1 | tail -3",{stdio:"inherit"});
 try{e("npx prisma generate 2>&1 | tail -3",{stdio:"inherit"})}catch(er){}
 try{e("npx prisma db push 2>&1 | tail -5",{stdio:"inherit"})}catch(er){}
 try{e("npx tsx src/deploy-commands.ts 2>&1 | tail -5",{stdio:"inherit"})}catch(er){}
