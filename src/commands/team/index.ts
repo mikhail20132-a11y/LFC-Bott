@@ -172,6 +172,7 @@ async function handleCreate(interaction: CommandInteraction): Promise<void> {
       shortName: shortName ?? undefined,
       description: description ?? undefined,
       emoji: emoji ?? undefined,
+      roleId: roleId,
       managerId,
     });
 
