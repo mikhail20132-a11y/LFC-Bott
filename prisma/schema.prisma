@@ -109,6 +109,7 @@ model Team {
   logoUrl       String?
   emoji         String?     // Team emoji (e.g. "⚽")
   description   String?
+  roleId        String?     // Discord role ID for the team
   managerId     String
   manager       DiscordUser @relation("TeamManager", fields: [managerId], references: [id])
   createdAt     DateTime    @default(now())
