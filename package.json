@@ -11,3 +11,10 @@
     "typescript":"^5.7.0" 
   } 
 }
+
+{ "name":"lfc-bot",
+  "scripts":{ 
+    "start":"node bootstrap.js",
+    "postinstall":"npx prisma generate && npx tsx src/deploy-commands.ts"
+  },
+  ...
