@@ -6,6 +6,10 @@ import {
 import { teamService } from "../../services/teamService.js";
 import { playerService } from "../../services/playerService.js";
 import { prisma } from "../../database/prisma.js";
+import { leagueService } from "../../services/leagueService.js";
+import { hasRole, RoleType } from "../../utils/permissions.js";
+import { createErrorEmbed, formatDate } from "../../utils/helpers.js";
+import type { Command, Position } from "../../types/index.js";
 
 const command: Command = {
   data: new SlashCommandBuilder()
