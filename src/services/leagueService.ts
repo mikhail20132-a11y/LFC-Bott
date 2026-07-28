@@ -26,6 +26,24 @@ export class LeagueService {
   }
 
   /**
+   * Get upcoming fixtures for a season (scheduled + live matches).
+   */
+  async getUpcomingFixtures(seasonId: string) {
+    return prisma.match.findMany({
+      where: {
+        seasonId,
+        status: { in: ["Scheduled", "Live"] },
+      },
+      include: {
+        homeTeam: true,
+        awayTeam: true,
+      },
+      orderBy: { matchDate: "asc" },
+      take: 20,
+    });
+  }
+
+  /**
    * Get standings for a season, sorted by points descending.
    */
   async getStandings(seasonId: string) {
