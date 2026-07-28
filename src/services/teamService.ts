@@ -9,6 +9,7 @@ export class TeamService {
     shortName?: string;
     description?: string;
     emoji?: string;
+    roleId?: string | null;
     managerId: string;
   }) {
     return prisma.team.create({
@@ -17,6 +18,7 @@ export class TeamService {
         shortName: data.shortName,
         description: data.description,
         emoji: data.emoji,
+        roleId: data.roleId,
         managerId: data.managerId,
       },
       include: { manager: true },
