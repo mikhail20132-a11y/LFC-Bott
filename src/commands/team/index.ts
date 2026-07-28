@@ -5,10 +5,7 @@ import {
 } from "discord.js";
 import { teamService } from "../../services/teamService.js";
 import { playerService } from "../../services/playerService.js";
-import { leagueService } from "../../services/leagueService.js";
-import { hasRole, RoleType } from "../../utils/permissions.js";
-import { createErrorEmbed, formatDate } from "../../utils/helpers.js";
-import type { Command, Position } from "../../types/index.js";
+import { prisma } from "../../database/prisma.js";
 
 const command: Command = {
   data: new SlashCommandBuilder()
@@ -116,11 +113,18 @@ async function handleCreate(interaction: CommandInteraction): Promise<void> {
   const name = interaction.options.getString("name", true);
   const shortName = interaction.options.getString("short");
   const description = interaction.options.getString("description");
-  const managerId = interaction.user.id;
+  const managerDiscordId = interaction.user.id;
 
   try {
     // Ensure user exists in DB
-    await playerService.getOrCreatePlayer(managerId, interaction.user.username);
+    await playerService.getOrCreatePlayer(managerDiscordId, interaction.user.username);
+    
+    // Get DiscordUser internal ID for the foreign key
+    const discordUser = await prisma.discordUser.findUnique({
+      where: { discordId: managerDiscordId }
+    });
+    if (!discordUser) throw new Error("Discord user not found after creation");
+    const managerId = discordUser.id;
 
     // Check if team name is taken
     const existing = await teamService.getTeamByName(name);
