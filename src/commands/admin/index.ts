@@ -65,8 +65,13 @@ const command: Command = {
 
 async function handleSetup(interaction: CommandInteraction): Promise<void> {
   await interaction.deferReply();
-  if (!hasRole(interaction.member as never, RoleType.Founder)) {
-    await interaction.editReply({ embeds: [createErrorEmbed("❌ Insufficient Permissions", "Only the **Founder** can run setup.")] });
+  
+  // Allow server owner OR Founder role to run setup
+  const member = await interaction.guild?.members.fetch(interaction.user.id);
+  const isOwner = member?.id === interaction.guild?.ownerId;
+  
+  if (!isOwner && !hasRole(interaction.member as never, RoleType.Founder)) {
+    await interaction.editReply({ embeds: [createErrorEmbed("❌ Insufficient Permissions", "Only the server **Owner** or someone with **Founder** role can run setup.")] });
     return;
   }
   const guild = interaction.guild;
