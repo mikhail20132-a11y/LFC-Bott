@@ -86,16 +86,25 @@ async function handleSetup(interaction: CommandInteraction): Promise<void> {
     const mgmtRole = await guild.roles.create({ name: "League Management", color: 0x00AAFF, reason: "LFC Auto-Setup" });
     const modRole = await guild.roles.create({ name: "Moderator", color: 0x00CC66, reason: "LFC Auto-Setup" });
     const refRole = await guild.roles.create({ name: "Referee", color: 0xFF4444, reason: "LFC Auto-Setup" });
+    const faRole = await guild.roles.create({ name: "Free Agent", color: 0x808080, reason: "LFC Auto-Setup" });
 
     // 2. Assign Founder role to command user
     const member = await guild.members.fetch(interaction.user.id);
     await member.roles.add(founderRole, "LFC Auto-Setup");
+    await member.roles.add(mgmtRole, "LFC Auto-Setup");
 
-    // 3. Save GuildConfig
+    // 3. Create channels (optional — wrap in try as may fail without perms)
+    let announceChan = null, logChan = null;
+    try {
+      announceChan = await guild.channels.create({ name: "lfc-announcements", type: 0, reason: "LFC Auto-Setup" });
+      logChan = await guild.channels.create({ name: "lfc-logs", type: 0, reason: "LFC Auto-Setup" });
+    } catch (_) {}
+
+    // 4. Save GuildConfig
     await prisma.guildConfig.upsert({
       where: { guildId: guild.id },
-      update: { staffRoleId: mgmtRole.id },
-      create: { guildId: guild.id, staffRoleId: mgmtRole.id },
+      update: { staffRoleId: mgmtRole.id, newsChannelId: announceChan?.id || null },
+      create: { guildId: guild.id, staffRoleId: mgmtRole.id, newsChannelId: announceChan?.id || null },
     });
 
     // 4. Create active season if none
@@ -120,12 +129,27 @@ async function handleSetup(interaction: CommandInteraction): Promise<void> {
     const embed = new EmbedBuilder()
       .setTitle("✅ LFC Bot — Full Auto-Setup Complete!")
       .setColor(0xFFD700)
-      .setDescription("Your Legacy Football Championship bot is fully configured! 🏆")
+      .setDescription("Your Legacy Football Championship is fully configured! 🏆")
       .addFields(
-        { name: "👑 Roles Created", value: `<@&${founderRole.id}> (You!), <@&${mgmtRole.id}>, <@&${modRole.id}>, <@&${refRole.id}>`, inline: false },
-        { name: "⚙️ Season Active", value: `Season ${new Date().getFullYear()} is running!`, inline: false },
-        { name: "📋 Quick-Start", value: "1️⃣ Members run `/offer` to sign up\n2️⃣ `/team create` to register teams\n3️⃣ `/match create` to schedule\n4️⃣ `/match start` to play!", inline: false },
-        { name: "💡 Next", value: "Run `/news setchannel #channel` for match alerts. Assign roles to staff!", inline: false }
+        { name: "👑 Roles Created", 
+          value: `<@&${founderRole.id}> (You!), <@&${mgmtRole.id}>, <@&${modRole.id}>, <@&${refRole.id}>, <@&${faRole.id}>`,
+          inline: false },
+        { name: "⚙️ Season Active", value: `Season ${new Date().getFullYear()} is running!`, inline: true },
+        { name: announceChan ? "📢 Announcements" : "", value: announceChan ? `<#${announceChan.id}> created` : "", inline: true },
+        { name: "📋 How It Works",
+          value: [
+            "**1️⃣ Players sign up** — Run `/offer @player` — they auto-get **Free Agent** role!",
+            "**2️⃣ Create teams** — `/team create name:\"Team\" emoji:⭐` — auto-creates Discord role!",
+            "**3️⃣ Sign players** — `/offer @player team:\"Team\"` — swaps FA→Team role automatically!",
+            "**4️⃣ Release** — `/release @player` — swaps back to Free Agent role!",
+            "**5️⃣ Play!** — `/match create` → `/match start` → live scoring!"
+          ].join("\n"), inline: false },
+        { name: "💡 Next Steps",
+          value: [
+            "• Assign **League Management**, **Moderator**, **Referee** roles to your staff",
+            announceChan ? `• Set ${announceChan} for match announcements` : "",
+            "• Players run `/offer` to register",
+          ].filter(Boolean).join("\n"), inline: false }
       );
     await interaction.editReply({ embeds: [embed] });
   } catch (error) {
