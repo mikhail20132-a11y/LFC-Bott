@@ -1,20 +1,13 @@
-{ "name":"lfc-bot", 
-  "scripts":{ "start":"node bootstrap.js" },
-  "dependencies":{ 
-    "@prisma/client":"^6.6.0", 
-    "discord.js":"^14.18.0", 
-    "dotenv":"^16.4.7" 
-  },
-  "devDependencies":{ 
-    "prisma":"^6.6.0", 
-    "tsx":"^4.19.0", 
-    "typescript":"^5.7.0" 
-  } 
-}
-
 { "name":"lfc-bot",
-  "scripts":{ 
-    "start":"node bootstrap.js",
-    "postinstall":"npx prisma generate && npx tsx src/deploy-commands.ts"
+  "scripts":{ "start":"node bootstrap.js" },
+  "dependencies":{
+    "@prisma/client":"^6.6.0",
+    "discord.js":"^14.18.0",
+    "dotenv":"^16.4.7"
   },
-  ...
+  "devDependencies":{
+    "prisma":"^6.6.0",
+    "tsx":"^4.19.0",
+    "typescript":"^5.7.0"
+  }
+}
