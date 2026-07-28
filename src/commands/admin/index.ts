@@ -93,18 +93,56 @@ async function handleSetup(interaction: CommandInteraction): Promise<void> {
     await member.roles.add(founderRole, "LFC Auto-Setup");
     await member.roles.add(mgmtRole, "LFC Auto-Setup");
 
-    // 3. Create channels (optional — wrap in try as may fail without perms)
-    let announceChan = null, logChan = null;
+    // 3. Create channel categories and channels
+    let catInfo: any = null, catLeague: any = null, catMgmt: any = null, catSocial: any = null, catMisc: any = null;
+    const createdChannels: string[] = [];
     try {
-      announceChan = await guild.channels.create({ name: "lfc-announcements", type: 0, reason: "LFC Auto-Setup" });
-      logChan = await guild.channels.create({ name: "lfc-logs", type: 0, reason: "LFC Auto-Setup" });
-    } catch (_) {}
+      catInfo = await guild.channels.create({ name: "📜 INFO", type: 4, reason: "LFC Setup" });
+      catLeague = await guild.channels.create({ name: "📊 LEAGUE", type: 4, reason: "LFC Setup" });
+      catMgmt = await guild.channels.create({ name: "🔧 MANAGEMENT", type: 4, reason: "LFC Setup" });
+      catSocial = await guild.channels.create({ name: "🎬 SOCIAL", type: 4, reason: "LFC Setup" });
+      catMisc = await guild.channels.create({ name: "📎 MISC", type: 4, reason: "LFC Setup" });
+
+      const makeChan = async (name: string, cat: any) => {
+        const c = await guild.channels.create({ name, type: 0, parent: cat?.id, reason: "LFC Setup" });
+        createdChannels.push(c.id);
+        if (name === "announcements" || name === "match-announcements") return c;
+        return null;
+      };
+
+      await makeChan("verify", catInfo);
+      await makeChan("rules", catInfo);
+      await makeChan("welcome", catInfo);
+      const annChan = await makeChan("announcements", catInfo);
+      await makeChan("activity-checks", catMgmt);
+      await makeChan("case-files", catMgmt);
+      await makeChan("blacklist", catMgmt);
+      await makeChan("awards", catInfo);
+      await makeChan("league-media", catSocial);
+      await makeChan("interviews", catSocial);
+      await makeChan("highlights", catSocial);
+      await makeChan("teams-list", catLeague);
+      await makeChan("standings", catLeague);
+      await makeChan("fixtures", catLeague);
+      await makeChan("roster", catLeague);
+      await makeChan("results", catLeague);
+      await makeChan("stats", catLeague);
+      await makeChan("transfer-news", catMgmt);
+      await makeChan("free-agents", catMgmt);
+      await makeChan("pickups", catMgmt);
+      await makeChan("predictions", catSocial);
+      await makeChan("tickets", catMisc);
+      await makeChan("partnerships", catMisc);
+      await makeChan("applications", catMisc);
+      await makeChan("match-rules", catInfo);
+    } catch (_) {} // channels are best-effort
 
     // 4. Save GuildConfig
+    const newsChan: any = createdChannels.length ? { id: createdChannels[0] } : null;
     await prisma.guildConfig.upsert({
       where: { guildId: guild.id },
-      update: { staffRoleId: mgmtRole.id, newsChannelId: announceChan?.id || null },
-      create: { guildId: guild.id, staffRoleId: mgmtRole.id, newsChannelId: announceChan?.id || null },
+      update: { staffRoleId: mgmtRole.id, newsChannelId: null },
+      create: { guildId: guild.id, staffRoleId: mgmtRole.id, newsChannelId: null },
     });
 
     // 4. Create active season if none
@@ -115,7 +153,7 @@ async function handleSetup(interaction: CommandInteraction): Promise<void> {
       });
     }
 
-    // 5. Re-register all commands globally
+    // 4. Re-register all commands globally
     try {
       const token = process.env.DISCORD_TOKEN;
       const clientId = process.env.CLIENT_ID;
@@ -126,6 +164,7 @@ async function handleSetup(interaction: CommandInteraction): Promise<void> {
       }
     } catch (_) {}
 
+    const chanCount = createdChannels.length;
     const embed = new EmbedBuilder()
       .setTitle("✅ LFC Bot — Full Auto-Setup Complete!")
       .setColor(0xFFD700)
@@ -134,22 +173,26 @@ async function handleSetup(interaction: CommandInteraction): Promise<void> {
         { name: "👑 Roles Created", 
           value: `<@&${founderRole.id}> (You!), <@&${mgmtRole.id}>, <@&${modRole.id}>, <@&${refRole.id}>, <@&${faRole.id}>`,
           inline: false },
-        { name: "⚙️ Season Active", value: `Season ${new Date().getFullYear()} is running!`, inline: true },
-        { name: announceChan ? "📢 Announcements" : "", value: announceChan ? `<#${announceChan.id}> created` : "", inline: true },
-        { name: "📋 How It Works",
+        { name: "📁 Categories Created", value: "📜 INFO · 📊 LEAGUE · 🔧 MANAGEMENT · 🎬 SOCIAL · 📎 MISC", inline: false },
+        { name: "📺 Channels", value: `**${chanCount} channels** created across all categories!`, inline: true },
+        { name: "⚙️ Season", value: `Season ${new Date().getFullYear()} active!`, inline: true },
+        { name: "📋 Commands Added",
           value: [
-            "**1️⃣ Players sign up** — Run `/offer @player` — they auto-get **Free Agent** role!",
-            "**2️⃣ Create teams** — `/team create name:\"Team\" emoji:⭐` — auto-creates Discord role!",
-            "**3️⃣ Sign players** — `/offer @player team:\"Team\"` — swaps FA→Team role automatically!",
-            "**4️⃣ Release** — `/release @player` — swaps back to Free Agent role!",
-            "**5️⃣ Play!** — `/match create` → `/match start` → live scoring!"
+            "`/standings` `/fixtures` `/viewschedule`",
+            "`/autogenerateschedule` `/team create`",
+            "`/offer` `/release` `/promote` `/demote`",
+            "`/gametime` `/lfp` `/appoint` `/demand`",
+            "`/waitlist` `/purge` `/disband` `/swap-teams`",
+            "`/threadcreate` `/add-emojis` `/blacklist-word`",
           ].join("\n"), inline: false },
-        { name: "💡 Next Steps",
+        { name: "💡 Quick Start",
           value: [
-            "• Assign **League Management**, **Moderator**, **Referee** roles to your staff",
-            announceChan ? `• Set ${announceChan} for match announcements` : "",
-            "• Players run `/offer` to register",
-          ].filter(Boolean).join("\n"), inline: false }
+            "1️⃣ `/admin setup` → done!",
+            "2️⃣ `/team create name:\"Team\" emoji:⚽` → add teams",
+            "3️⃣ Players run `/offer @user position:FWD` → sign up",
+            "4️⃣ `/autogenerateschedule weeks:10` → season ready!",
+            "5️⃣ `/match start` → play!"
+          ].join("\n"), inline: false }
       );
     await interaction.editReply({ embeds: [embed] });
   } catch (error) {
