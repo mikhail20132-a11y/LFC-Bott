@@ -107,6 +107,7 @@ model Team {
   name          String      @unique
   shortName     String?     // e.g. "LFC"
   logoUrl       String?
+  emoji         String?     // Team emoji (e.g. "⚽")
   description   String?
   managerId     String
   manager       DiscordUser @relation("TeamManager", fields: [managerId], references: [id])
