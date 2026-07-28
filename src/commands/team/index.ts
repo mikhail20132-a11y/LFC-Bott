@@ -37,6 +37,12 @@ const command: Command = {
             .setDescription("Team description")
             .setRequired(false)
         )
+        .addStringOption((opt) =>
+          opt
+            .setName("emoji")
+            .setDescription("Team emoji (e.g. ⚽)")
+            .setRequired(false)
+        )
     )
     .addSubcommand((sub) =>
       sub
@@ -117,6 +123,7 @@ async function handleCreate(interaction: CommandInteraction): Promise<void> {
   const name = interaction.options.getString("name", true);
   const shortName = interaction.options.getString("short");
   const description = interaction.options.getString("description");
+  const emoji = interaction.options.getString("emoji");
   const managerDiscordId = interaction.user.id;
 
   try {
@@ -144,15 +151,32 @@ async function handleCreate(interaction: CommandInteraction): Promise<void> {
       return;
     }
 
+    // Create Discord role for the team
+    let roleId = null;
+    try {
+      if (interaction.guild) {
+        const role = await interaction.guild.roles.create({
+          name: name,
+          mentionable: true,
+          reason: `LFC Team role for ${name}`,
+        });
+        roleId = role.id;
+      }
+    } catch (roleErr) {
+      console.error("[Role Create Error]", roleErr);
+      // Non-critical - team still created without a role
+    }
+
     const team = await teamService.createTeam({
       name,
       shortName: shortName ?? undefined,
       description: description ?? undefined,
+      emoji: emoji ?? undefined,
       managerId,
     });
 
     const embed = new EmbedBuilder()
-      .setTitle(`✅ Team Created: ${team.name}`)
+      .setTitle(`${emoji || "🏟️"} Team Created: ${team.name}`)
       .setColor("#00AA00")
       .addFields(
         { name: "📛 Name", value: team.name, inline: true },
@@ -164,6 +188,11 @@ async function handleCreate(interaction: CommandInteraction): Promise<void> {
         {
           name: "👤 Manager",
           value: `<@${team.manager.discordId}>`,
+          inline: true,
+        },
+        {
+          name: "🎭 Team Role",
+          value: roleId ? `<@&${roleId}>` : "Not created (check perms)",
           inline: true,
         },
         {
