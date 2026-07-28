@@ -4,6 +4,7 @@ import {
   EmbedBuilder,
 } from "discord.js";
 import { contractService } from "../../services/contractService.js";
+import { prisma } from "../../database/prisma.js";
 import { hasRole, RoleType } from "../../utils/permissions.js";
 import { createErrorEmbed } from "../../utils/helpers.js";
 import type { Command, TeamRole } from "../../types/index.js";
@@ -99,27 +100,46 @@ const command: Command = {
         try {
           const member = await interaction.guild.members.fetch(target.id);
           await member.setNickname(nickname);
-          nicknameResult = `✅ Set to **${nickname}**`;
+          nicknameResult = nickname;
         } catch {
           nicknameResult = "⚠️ Could not set nickname (check bot permissions)";
         }
       }
 
+      // Auto-assign team's Discord role
+      let roleResult = "";
+      if (interaction.guild) {
+        try {
+          const fullTeam = await prisma.team.findUnique({ where: { id: team.id } });
+          if (fullTeam?.roleId) {
+            const member = await interaction.guild.members.fetch(target.id);
+            const tRole = await interaction.guild.roles.fetch(fullTeam.roleId).catch(() => null);
+            if (tRole) {
+              await member.roles.add(tRole, "LFC Contract");
+              roleResult = `\n🎭 Granted role **${tRole.name}**`;
+            }
+          }
+        } catch (e) {
+          console.error("[Offer Role]", e);
+        }
+      }
+
+      const posEmoji: Record<string, string> = { Goalkeeper: "🧤", Defender: "🛡️", Midfielder: "⚡", Forward: "⚽" };
       const embed = new EmbedBuilder()
-        .setTitle("📝 Contract Offered!")
+        .setTitle(`${posEmoji[position] || "📝"} Contract Offered!`)
         .setColor("#00AA00")
-        .setDescription(`**${target.username}** has joined **${team.name}**!`)
+        .setThumbnail(target.displayAvatarURL())
+        .setDescription(`${target.username} → **${team.name}**`)
         .addFields(
           { name: "👤 Player", value: `<@${target.id}>`, inline: true },
-          { name: "🏟️ Team", value: team.name, inline: true },
+          { name: "🏟️ Team", value: `${team.emoji || ""} ${team.name}`, inline: true },
           { name: "⚽ Position", value: position, inline: true },
           { name: "🌍 Region", value: region, inline: true },
-          { name: "🎭 Role", value: role ?? "Starter", inline: true },
-          { name: "🆔 LFC ID", value: player.lfcId, inline: true },
-          { name: "🎮 Roblox", value: roblox ?? "Not set", inline: true },
-          { name: "📛 Nickname", value: nicknameResult, inline: false },
+          { name: "🎭 Team Role", value: role ?? "Starter", inline: true },
+          { name: "🆔 LFC ID", value: `\`${player.lfcId}\``, inline: true },
+          { name: "📛 Nickname", value: nicknameResult || "None", inline: true },
         )
-        .setFooter({ text: `Contract ID: ${contract.id.slice(0, 8)} • Legacy Football Championship` })
+        .setFooter({ text: `Contract: ${contract.id.slice(0,8)}…${roleResult}` })
         .setTimestamp();
 
       await interaction.editReply({ embeds: [embed] });
