@@ -1,41 +1,12 @@
 import {
   SlashCommandBuilder,
-  CommandInteraction,
+  ChatInputCommandInteraction,
   EmbedBuilder,
 } from "discord.js";
 import { teamService } from "../../services/teamService.js";
-import { createErrorEmbed } from "../../utils/helpers.js";
+import { prisma } from "../../database/prisma.js";
+import { createErrorEmbed, BRAND } from "../../utils/helpers.js";
 import type { Command } from "../../types/index.js";
-
-/** Simple hash function to derive a stable hex colour from a team name. */
-function teamColor(teamName: string): number {
-  let hash = 0;
-  for (let i = 0; i < teamName.length; i++) {
-    hash = teamName.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  // Keep in a nice hue range (avoid very dark/bright)
-  const h = ((hash % 360) + 360) % 360;
-  // Convert HSL-ish to approximate hex — just use a fixed rich palette of colours
-  const palette = [
-    0xc8102e, // LFC Red
-    0x1e40af, // Royal Blue
-    0x059669, // Emerald
-    0xd97706, // Amber
-    0xdc2626, // Crimson
-    0x2563eb, // Bright Blue
-    0x9333ea, // Purple
-    0xca8a04, // Gold
-    0x0891b2, // Cyan
-    0xbe123c, // Rose
-    0x4f46e5, // Indigo
-    0xea580c, // Orange
-    0x0d9488, // Teal
-    0x65a30d, // Lime
-    0x0284c7, // Sky
-    0xdb2777, // Pink
-  ];
-  return palette[Math.abs(hash) % palette.length];
-}
 
 const command: Command = {
   data: new SlashCommandBuilder()
@@ -52,10 +23,8 @@ const command: Command = {
         .setDescription("View top teams by trophies")
     ),
 
-  async execute(interaction: CommandInteraction) {
-    if (!interaction.isChatInputCommand()) return;
+  async execute(interaction: ChatInputCommandInteraction) {
     await interaction.deferReply();
-
     const sub = interaction.options.getSubcommand();
 
     try {
@@ -76,8 +45,14 @@ const command: Command = {
   },
 };
 
-async function handleList(interaction: CommandInteraction): Promise<void> {
-  const teams = await teamService.listTeams();
+async function handleList(interaction: ChatInputCommandInteraction): Promise<void> {
+  const teams = await prisma.team.findMany({
+    include: {
+      manager: true,
+      _count: { select: { players: true } },
+    },
+    orderBy: { name: "asc" },
+  });
 
   if (!teams || teams.length === 0) {
     await interaction.editReply({
@@ -86,52 +61,67 @@ async function handleList(interaction: CommandInteraction): Promise<void> {
     return;
   }
 
-  // Split into pages of 8 teams (Discord embed field limit)
-  const pageSize = 8;
+  // Split into pages of 10
+  const pageSize = 10;
   const pages = Math.ceil(teams.length / pageSize);
-  const currentPage = 0;
-  const slice = teams.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
+  let currentPage = 0;
 
-  const embed = new EmbedBuilder()
-    .setTitle("🏟️ Franchise Owner List")
-    .setColor(0x059669)
-    .setDescription(`**Active Franchises — ${teams.length} total**`)
-    .setTimestamp();
+  function buildPage(page: number) {
+    const slice = teams.slice(page * pageSize, (page + 1) * pageSize);
 
-  for (const team of slice) {
-    const emoji = team.emoji || "🏟️";
-    const colorHex = teamColor(team.name).toString(16).padStart(6, "0");
-    const rosterCount = (team as any)._count?.players || 0;
-    const managerTag = team.manager?.username
-      ? `<@${team.managerId}>`
-      : "`No FO`";
+    const embed = new EmbedBuilder()
+      .setTitle("🏟️ Franchise Owners")
+      .setColor(BRAND.colors.primary)
+      .setDescription([
+        `**Active Franchises — ${teams.length}**`,
+        pages > 1 ? `Page **${page + 1}/${pages}**` : "",
+      ].filter(Boolean).join("\n"))
+      .setFooter({ text: BRAND.footer })
+      .setTimestamp();
 
-    embed.addFields({
-      name: `${emoji} **${team.name}**`,
-      value: [
+    for (const team of slice) {
+      const emoji = team.emoji || "🏟️";
+      const rosterCount = team._count.players;
+      const managerStr = team.manager
+        ? `<@${team.manager.discordId}>`
+        : "`No FO`";
+
+      const fieldVal = [
         `\`${rosterCount}/30\``,
-        `👤 ${managerTag}`,
-        team.trophies ? `🏆 ${team.trophies} trophy${team.trophies !== 1 ? "ies" : "y"}` : "",
-      ]
-        .filter(Boolean)
-        .join("　·　"),
-      inline: false,
-    });
+        `👤 ${managerStr}`,
+      ];
+
+      if (team.trophies && team.trophies > 0) {
+        fieldVal.push(`🏆 **${team.trophies}**`);
+      }
+
+      embed.addFields({
+        name: `${emoji} ${team.shortName ? `**${team.shortName}**` : `**${team.name}**`}`,
+        value: fieldVal.join("　·　"),
+        inline: false,
+      });
+    }
+
+    return embed;
   }
 
-  if (pages > 1) {
-    embed.setFooter({
-      text: `Page ${currentPage + 1}/${pages} · ${teams.length} franchises total`,
-    });
-  } else {
-    embed.setFooter({ text: `${teams.length} franchises registered` });
-  }
+  const msg = await interaction.editReply({
+    embeds: [buildPage(0)],
+    components: [],
+  });
 
-  await interaction.editReply({ embeds: [embed] });
+  if (pages <= 1) return;
 }
 
-async function handleTop(interaction: CommandInteraction): Promise<void> {
-  const teams = await teamService.listTeams();
+async function handleTop(interaction: ChatInputCommandInteraction): Promise<void> {
+  const teams = await prisma.team.findMany({
+    include: {
+      manager: true,
+      _count: { select: { players: true } },
+    },
+    orderBy: { trophies: "desc" },
+    take: 10,
+  });
 
   if (!teams || teams.length === 0) {
     await interaction.editReply({
@@ -140,27 +130,28 @@ async function handleTop(interaction: CommandInteraction): Promise<void> {
     return;
   }
 
-  const sorted = [...teams].sort((a, b) => (b.trophies || 0) - (a.trophies || 0));
-  const top = sorted.slice(0, 10);
+  const medals = ["🥇", "🥈", "🥉", "4⃣", "5⃣", "6⃣", "7⃣", "8⃣", "9⃣", "🔟"];
 
   const embed = new EmbedBuilder()
     .setTitle("🏆 Trophy Leaders")
-    .setColor(0xffd700)
+    .setColor(BRAND.colors.gold)
     .setDescription("**Most decorated franchises in LFC history**")
+    .setFooter({ text: BRAND.footer })
     .setTimestamp();
 
-  const medals = ["🥇", "🥈", "🥉", "4⃣", "5⃣", "6⃣", "7⃣", "8⃣", "9⃣", "🔟"];
-
-  for (let i = 0; i < top.length; i++) {
-    const team = top[i];
+  for (let i = 0; i < teams.length; i++) {
+    const team = teams[i];
     const emoji = team.emoji || "🏟️";
-    const rosterCount = (team as any)._count?.players || 0;
+    const rosterCount = team._count.players;
+    const managerStr = team.manager
+      ? `<@${team.manager.discordId}>`
+      : "`No FO`";
 
     embed.addFields({
       name: `${medals[i]} ${emoji} **${team.name}**`,
       value: [
         `🏆 **${team.trophies}** trophy${team.trophies !== 1 ? "ies" : "y"}`,
-        `👤 ${team.manager?.username || "Unknown"}`,
+        `👤 ${managerStr}`,
         `\`${rosterCount}/30\``,
       ].join(" · "),
       inline: false,
