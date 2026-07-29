@@ -23,7 +23,7 @@ const command: Command = {
         .setDescription("Name for the emoji (lowercase letters, numbers, underscores)")
         .setRequired(true)
     )
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageExpressions),
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuildExpressions),
 
   async execute(interaction: CommandInteraction) {
     if (!interaction.isChatInputCommand()) return;
@@ -47,7 +47,7 @@ const command: Command = {
       const perms = (member as any).permissions;
       const hasPerm =
         typeof perms.has === "function"
-          ? perms.has(PermissionFlagsBits.ManageExpressions)
+          ? perms.has(PermissionFlagsBits.ManageGuildExpressions)
           : false;
       if (!hasPerm) {
         await interaction.editReply({
