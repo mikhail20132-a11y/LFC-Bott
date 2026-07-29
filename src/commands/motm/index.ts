@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, CommandInteraction, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ComponentType } from "discord.js";
+import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ComponentType } from "discord.js";
 import { prisma } from "../../database/prisma.js";
 import { hasRole, RoleType } from "../../utils/permissions.js";
 import { createErrorEmbed } from "../../utils/helpers.js";
@@ -10,11 +10,11 @@ const command: Command = {
     .setDescription("Start a Man of the Match poll in the match thread")
     .addStringOption((o) => o.setName("match_id").setDescription("Match ID").setRequired(true)),
 
-  async execute(interaction: CommandInteraction) {
+  async execute(interaction: ChatInputCommandInteraction) {
     if (!interaction.isChatInputCommand()) return;
     await interaction.deferReply();
 
-    if (!hasRole(interaction.member as never, RoleType.Founder) && !hasRole(interaction.member as never, RoleType.LeagueManagement) && !hasRole(interaction.member as never, RoleType.Referee)) {
+    if (!hasRole(interaction.member as never, RoleType.Manager) && !hasRole(interaction.member as never, RoleType.AssistantManager) && !hasRole(interaction.member as never, RoleType.Referee)) {
       await interaction.editReply({ embeds: [createErrorEmbed("❌ Permissions", "Staff only.")] }); return;
     }
 
