@@ -11,26 +11,13 @@ import { createSuccessEmbed, createErrorEmbed, BRAND, formatDate } from "../../u
 import type { Command } from "../../types/index.js";
 
 const APPOINT_ROLES = [
-  { name: "👑 Franchise Owner", value: "Franchise Owner" },
-  { name: "📋 General Manager", value: "General Manager" },
-  { name: "🏋️ Head Coach", value: "Head Coach" },
-  { name: "📊 Assistant Coach", value: "Assistant Coach" },
   { name: "🔧 Manager", value: "Manager" },
   { name: "⚙️ Assistant Manager", value: "Assistant Manager" },
-  { name: "🛡️ Moderator", value: "Moderator" },
-  { name: "⚪ Referee", value: "Referee" },
 ];
 
-// Maps appointment roles to Discord role names to look up
 const ROLE_DISPLAY: Record<string, { emoji: string; color: number }> = {
-  "Franchise Owner": { emoji: "👑", color: 0xffd700 },
-  "General Manager": { emoji: "📋", color: 0x6366f1 },
-  "Head Coach": { emoji: "🏋️", color: 0x22c55e },
-  "Assistant Coach": { emoji: "📊", color: 0x8b5cf6 },
   "Manager": { emoji: "🔧", color: 0x6366f1 },
   "Assistant Manager": { emoji: "⚙️", color: 0x22c55e },
-  "Moderator": { emoji: "🛡️", color: 0x00cc66 },
-  "Referee": { emoji: "⚪", color: 0xef4444 },
 };
 
 const command: Command = {
