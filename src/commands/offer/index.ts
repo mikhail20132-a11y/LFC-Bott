@@ -1,6 +1,6 @@
 import {
   SlashCommandBuilder,
-  CommandInteraction,
+  ChatInputCommandInteraction,
   EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
@@ -8,15 +8,17 @@ import {
 } from "discord.js";
 import { prisma } from "../../database/prisma.js";
 import { hasRole, RoleType } from "../../utils/permissions.js";
-import { createErrorEmbed } from "../../utils/helpers.js";
+import { createErrorEmbed, BRAND, POSITION_CHOICES } from "../../utils/helpers.js";
 import { createOffer } from "../../services/offerSessionStore.js";
 import type { Command, TeamRole } from "../../types/index.js";
 
-const POSITIONS = [
-  { name: "🧤 Goalkeeper", value: "Goalkeeper" },
-  { name: "🛡️ Defender", value: "Defender" },
-  { name: "🎯 Midfielder", value: "Midfielder" },
-  { name: "⚽ Forward", value: "Forward" },
+const REGIONS = [
+  { name: "🌍 Europe", value: "Europe" },
+  { name: "🌏 Asia", value: "Asia" },
+  { name: "🌍 Africa", value: "Africa" },
+  { name: "🌎 North America", value: "North America" },
+  { name: "🌎 South America", value: "South America" },
+  { name: "🌏 Oceania", value: "Oceania" },
 ];
 
 const ROLES = [
@@ -48,7 +50,7 @@ const command: Command = {
     )
     .addStringOption((opt) =>
       opt.setName("position").setDescription("Position").setRequired(true)
-        .addChoices(...POSITIONS)
+        .addChoices(...POSITION_CHOICES)
     )
     .addStringOption((opt) =>
       opt.setName("region").setDescription("Region").setRequired(true)
@@ -65,7 +67,7 @@ const command: Command = {
       opt.setName("nickname").setDescription("Server nickname to assign").setRequired(false)
     ),
 
-  async execute(interaction: CommandInteraction) {
+  async execute(interaction: ChatInputCommandInteraction) {
     if (!interaction.isChatInputCommand()) return;
     await interaction.deferReply({ ephemeral: true });
 
@@ -139,7 +141,7 @@ const command: Command = {
       };
       const offerEmbed = new EmbedBuilder()
         .setTitle(`📩 Offer Received`)
-        .setColor(0xf59e0b)
+        .setColor(BRAND.colors.warning)
         .setDescription(
           `**${team.emoji || "🏟️"} ${team.name}** have sent you an offer to join their team!\n\nDo you accept?`
         )
