@@ -9,6 +9,7 @@ import {
   ChannelType,
   StringSelectMenuBuilder,
   StringSelectMenuOptionBuilder,
+  PermissionFlagsBits,
 } from "discord.js";
 import { prisma } from "../../database/prisma.js";
 import { createErrorEmbed, BRAND } from "../../utils/helpers.js";
@@ -28,7 +29,8 @@ const CHANNEL_KEYS = [
 const command: Command = {
   data: new SlashCommandBuilder()
     .setName("setup")
-    .setDescription("Open the interactive setup panel to configure channels, roles, and settings"),
+    .setDescription("Open the interactive setup panel to configure channels, roles, and settings")
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
   async execute(interaction: ChatInputCommandInteraction) {
     await interaction.deferReply();
