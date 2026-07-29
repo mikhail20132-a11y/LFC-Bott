@@ -2,6 +2,7 @@ import {
   SlashCommandBuilder,
   ChatInputCommandInteraction,
   EmbedBuilder,
+  PermissionFlagsBits,
 } from "discord.js";
 import { teamService } from "../../services/teamService.js";
 import { playerService } from "../../services/playerService.js";
@@ -15,6 +16,7 @@ const command: Command = {
   data: new SlashCommandBuilder()
     .setName("team")
     .setDescription("Team commands — create, info, roster, and stats")
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .addSubcommand((sub) =>
       sub
         .setName("create")
@@ -103,17 +105,15 @@ const command: Command = {
 async function handleCreate(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply();
 
-  // Permission check
-  const member = interaction.member;
+  // Admin only
   if (
-    !hasRole(member as never, RoleType.Manager) &&
-    !hasRole(member as never, RoleType.AssistantManager)
+    !(interaction.member as any)?.permissions?.has(PermissionFlagsBits.Administrator)
   ) {
     await interaction.editReply({
       embeds: [
         createErrorEmbed(
           "❌ Insufficient Permissions",
-          "You need the **Manager** or **Assistant Manager** role to create teams."
+          "You need **Administrator** permission to create teams."
         ),
       ],
     });
