@@ -1,6 +1,6 @@
 import {
   SlashCommandBuilder,
-  CommandInteraction,
+  ChatInputCommandInteraction,
   EmbedBuilder,
   PermissionFlagsBits,
   REST,
@@ -53,7 +53,8 @@ const command: Command = {
           .addStringOption((opt) => opt.setName("name").setDescription("Season name").setRequired(true)))
         .addSubcommand((sub) => sub.setName("end").setDescription("End the current active season (Assistant Manager only)"))
     ),
-  async execute(interaction: CommandInteraction) {
+
+  async execute(interaction: ChatInputCommandInteraction) {
     if (!interaction.isChatInputCommand()) return;
     const group = interaction.options.getSubcommandGroup(false);
     if (group === "season") {
@@ -61,7 +62,7 @@ const command: Command = {
       return sub === "start" ? handleSeasonStart(interaction) : handleSeasonEnd(interaction);
     }
     const subcommand = interaction.options.getSubcommand(true);
-    const handlers: Record<string, (i: CommandInteraction) => Promise<void>> = {
+    const handlers: Record<string, (i: ChatInputCommandInteraction) => Promise<void>> = {
       setup: handleSetup,
       "set-demandschannel": handleSetDemandsChannel,
       warn: handleWarn,
@@ -73,10 +74,13 @@ const command: Command = {
   },
 };
 
-async function handleSetup(interaction: CommandInteraction): Promise<void> {
+async function handleSetup(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply();
+  
+  // Allow server owner OR Manager role to run setup
   const member = await interaction.guild?.members.fetch(interaction.user.id);
   const isOwner = member?.id === interaction.guild?.ownerId;
+  
   if (!isOwner && !hasRole(interaction.member as never, RoleType.Manager)) {
     await interaction.editReply({ embeds: [createErrorEmbed("❌ Insufficient Permissions", "Only the server **Owner** or someone with **Manager** role can run setup.")] });
     return;
@@ -86,14 +90,20 @@ async function handleSetup(interaction: CommandInteraction): Promise<void> {
     await interaction.editReply({ embeds: [createErrorEmbed("❌ Error", "This command must be used in a server.")] });
     return;
   }
+
   try {
+    // 1. Create roles
     const managerRole = await guild.roles.create({ name: "Manager", color: 0x6366f1, reason: "LFC Auto-Setup" });
     const assistantRole = await guild.roles.create({ name: "Assistant Manager", color: 0x22c55e, reason: "LFC Auto-Setup" });
     const modRole = await guild.roles.create({ name: "Moderator", color: 0x00CC66, reason: "LFC Auto-Setup" });
     const refRole = await guild.roles.create({ name: "Referee", color: 0xFF4444, reason: "LFC Auto-Setup" });
     const faRole = await guild.roles.create({ name: "Free Agent", color: 0x808080, reason: "LFC Auto-Setup" });
-    await member!.roles.add(managerRole, "LFC Auto-Setup");
-    await member!.roles.add(assistantRole, "LFC Auto-Setup");
+
+    // 2. Assign Manager & Assistant Manager roles to command user
+    await member.roles.add(managerRole, "LFC Auto-Setup");
+    await member.roles.add(assistantRole, "LFC Auto-Setup");
+
+    // 3. Create channel categories and channels
     let catInfo: any = null, catLeague: any = null, catMgmt: any = null, catSocial: any = null, catMisc: any = null;
     const createdChannels: string[] = [];
     try {
@@ -102,16 +112,18 @@ async function handleSetup(interaction: CommandInteraction): Promise<void> {
       catMgmt = await guild.channels.create({ name: "🔧 MANAGEMENT", type: 4, reason: "LFC Setup" });
       catSocial = await guild.channels.create({ name: "🎬 SOCIAL", type: 4, reason: "LFC Setup" });
       catMisc = await guild.channels.create({ name: "📎 MISC", type: 4, reason: "LFC Setup" });
+
       const makeChan = async (name: string, cat: any) => {
         const c = await guild.channels.create({ name, type: 0, parent: cat?.id, reason: "LFC Setup" });
         createdChannels.push(c.id);
         if (name === "announcements" || name === "match-announcements") return c;
         return null;
       };
+
       await makeChan("verify", catInfo);
       await makeChan("rules", catInfo);
       await makeChan("welcome", catInfo);
-      await makeChan("announcements", catInfo);
+      const annChan = await makeChan("announcements", catInfo);
       await makeChan("activity-checks", catMgmt);
       await makeChan("demands", catMgmt);
       await makeChan("case-files", catMgmt);
@@ -134,19 +146,30 @@ async function handleSetup(interaction: CommandInteraction): Promise<void> {
       await makeChan("partnerships", catMisc);
       await makeChan("applications", catMisc);
       await makeChan("match-rules", catInfo);
-    } catch (_) {}
+    } catch (_) {} // channels are best-effort
+
+    // 4. Save GuildConfig — find demands channel by name
     let demandsChanId: string | null = null;
-    const demandsChannel = guild.channels.cache.find((c) => c.name === "demands" && c.parent?.name.includes("MANAGEMENT"));
+    const demandsChannel = guild.channels.cache.find(
+      (c) => c.name === "demands" && c.parent?.name.includes("MANAGEMENT")
+    );
     if (demandsChannel) demandsChanId = demandsChannel.id;
+
     await prisma.guildConfig.upsert({
       where: { guildId: guild.id },
       update: { staffRoleId: managerRole.id, newsChannelId: null, demandsChannelId: demandsChanId },
       create: { guildId: guild.id, staffRoleId: managerRole.id, newsChannelId: null, demandsChannelId: demandsChanId },
     });
+
+    // 4. Create active season if none
     const existing = await prisma.season.findFirst({ where: { isActive: true } });
     if (!existing) {
-      await prisma.season.create({ data: { name: `Season ${new Date().getFullYear()}`, isActive: true, startedAt: new Date() } });
+      await prisma.season.create({
+        data: { name: `Season ${new Date().getFullYear()}`, isActive: true, startedAt: new Date() },
+      });
     }
+
+    // 4. Re-register all commands globally
     try {
       const token = process.env.DISCORD_TOKEN;
       const clientId = process.env.CLIENT_ID;
@@ -156,27 +179,45 @@ async function handleSetup(interaction: CommandInteraction): Promise<void> {
         await rest.put(Routes.applicationCommands(clientId), { body: cmds });
       }
     } catch (_) {}
+
     const chanCount = createdChannels.length;
     const embed = new EmbedBuilder()
       .setTitle("✅ LFC Bot — Full Auto-Setup Complete!")
       .setColor(0xFFD700)
       .setDescription("Your Legacy Football Championship is fully configured! 🏆")
       .addFields(
-        { name: "👑 Roles Created", value: `<@&${managerRole.id}> (You!), <@&${assistantRole.id}>, <@&${modRole.id}>, <@&${refRole.id}>, <@&${faRole.id}>`, inline: false },
+        { name: "👑 Roles Created", 
+          value: `<@&${managerRole.id}> (You!), <@&${assistantRole.id}>, <@&${modRole.id}>, <@&${refRole.id}>, <@&${faRole.id}>`,
+          inline: false },
         { name: "📁 Categories Created", value: "📜 INFO · 📊 LEAGUE · 🔧 MANAGEMENT · 🎬 SOCIAL · 📎 MISC", inline: false },
         { name: "📺 Channels", value: `**${chanCount} channels** created across all categories!`, inline: true },
         { name: "⚙️ Season", value: `Season ${new Date().getFullYear()} active!`, inline: true },
-        { name: "📋 Commands Added", value: ["`/standings` `/fixtures` `/viewschedule`","`/autogenerateschedule` `/team create`","`/offer` `/release` `/promote` `/demote`","`/gametime` `/lfp` `/appoint` `/demand`","`/waitlist` `/purge` `/disband` `/swap-teams`","`/threadcreate` `/add-emojis` `/blacklist-word`",].join("\n"), inline: false },
-        { name: "💡 Quick Start", value: ["1️⃣ `/admin setup` → done!","2️⃣ `/team create name:\"Team\" emoji:⚽` → add teams","3️⃣ Players run `/offer @user position:FWD` → sign up","4️⃣ `/autogenerateschedule weeks:10` → season ready!","5️⃣ `/match start` → play!"].join("\n"), inline: false }
+        { name: "📋 Commands Added",
+          value: [
+            "`/standings` `/fixtures` `/viewschedule`",
+            "`/autogenerateschedule` `/team create`",
+            "`/offer` `/release` `/promote` `/demote`",
+            "`/gametime` `/lfp` `/appoint` `/demand`",
+            "`/waitlist` `/purge` `/disband` `/swap-teams`",
+            "`/threadcreate` `/add-emojis` `/blacklist-word`",
+          ].join("\n"), inline: false },
+        { name: "💡 Quick Start",
+          value: [
+            "1️⃣ `/admin setup` → done!",
+            "2️⃣ `/team create name:\"Team\" emoji:⚽` → add teams",
+            "3️⃣ Players run `/offer @user position:FWD` → sign up",
+            "4️⃣ `/autogenerateschedule weeks:10` → season ready!",
+            "5️⃣ `/match start` → play!"
+          ].join("\n"), inline: false }
       );
     await interaction.editReply({ embeds: [embed] });
   } catch (error) {
     console.error("[Setup Error]", error);
-    await interaction.editReply({ embeds: [createErrorEmbed("❌ Setup Failed", `Error: \`${error}\``)] });
+    await interaction.editReply({ embeds: [createErrorEmbed("❌ Setup Failed", `Error: \`${error}\`\n\nMake sure the bot has **Manage Roles** permission.`)] });
   }
 }
 
-async function handleWarn(interaction: CommandInteraction): Promise<void> {
+async function handleWarn(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply();
   if (!hasRole(interaction.member as never, RoleType.Moderator) && !hasRole(interaction.member as never, RoleType.AssistantManager) && !hasRole(interaction.member as never, RoleType.Manager)) {
     await interaction.editReply({ embeds: [createErrorEmbed("❌ No Permission", "Staff+ required.")] });
@@ -192,7 +233,7 @@ async function handleWarn(interaction: CommandInteraction): Promise<void> {
   }
 }
 
-async function handleSuspend(interaction: CommandInteraction): Promise<void> {
+async function handleSuspend(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply();
   if (!hasRole(interaction.member as never, RoleType.AssistantManager) && !hasRole(interaction.member as never, RoleType.Manager)) {
     await interaction.editReply({ embeds: [createErrorEmbed("❌ No Permission", "Management+ required.")] });
@@ -204,13 +245,13 @@ async function handleSuspend(interaction: CommandInteraction): Promise<void> {
   const expiresAt = duration && duration !== "permanent" ? new Date(Date.now() + parseInt(duration) * 86400000) : null;
   try {
     await adminService.createSuspension(user.id, reason, interaction.user.id, expiresAt);
-    await interaction.editReply({ embeds: [createSuccessEmbed("🔒 User Suspended", `${user} suspended: **${reason}**`)] });
+    await interaction.editReply({ embeds: [createSuccessEmbed("🔒 User Suspended", `${user} suspended${duration ? ` for ${duration}` : ""}: **${reason}**`)] });
   } catch (e) {
     await interaction.editReply({ embeds: [createErrorEmbed("❌ Failed", String(e))] });
   }
 }
 
-async function handleBlacklist(interaction: CommandInteraction): Promise<void> {
+async function handleBlacklist(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply();
   if (!hasRole(interaction.member as never, RoleType.Manager)) {
     await interaction.editReply({ embeds: [createErrorEmbed("❌ No Permission", "Manager only.")] });
@@ -226,7 +267,7 @@ async function handleBlacklist(interaction: CommandInteraction): Promise<void> {
   }
 }
 
-async function handleSeasonStart(interaction: CommandInteraction): Promise<void> {
+async function handleSeasonStart(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply();
   if (!hasRole(interaction.member as never, RoleType.AssistantManager) && !hasRole(interaction.member as never, RoleType.Manager)) {
     await interaction.editReply({ embeds: [createErrorEmbed("❌ No Permission", "Management+ required.")] });
@@ -241,7 +282,7 @@ async function handleSeasonStart(interaction: CommandInteraction): Promise<void>
   }
 }
 
-async function handleSetDemandsChannel(interaction: CommandInteraction): Promise<void> {
+async function handleSetDemandsChannel(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply();
   if (!hasRole(interaction.member as never, RoleType.AssistantManager) && !hasRole(interaction.member as never, RoleType.Manager)) {
     await interaction.editReply({ embeds: [createErrorEmbed("❌ No Permission", "Management+ required.")] });
@@ -253,10 +294,18 @@ async function handleSetDemandsChannel(interaction: CommandInteraction): Promise
     update: { demandsChannelId: channel.id },
     create: { guildId: interaction.guildId!, demandsChannelId: channel.id },
   });
-  await interaction.editReply({ embeds: [createSuccessEmbed("📢 Demands Channel Set!", `Demand notifications will now be posted to ${channel}.`)] });
+  await interaction.editReply({
+    embeds: [
+      createSuccessEmbed(
+        "📢 Demands Channel Set!",
+        `Demand notifications will now be posted to ${channel}.\n\n` +
+          `When players use \`/demand\`, the transfer demand will appear there.`
+      ),
+    ],
+  });
 }
 
-async function handleSeasonEnd(interaction: CommandInteraction): Promise<void> {
+async function handleSeasonEnd(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply();
   if (!hasRole(interaction.member as never, RoleType.AssistantManager) && !hasRole(interaction.member as never, RoleType.Manager)) {
     await interaction.editReply({ embeds: [createErrorEmbed("❌ No Permission", "Management+ required.")] });
