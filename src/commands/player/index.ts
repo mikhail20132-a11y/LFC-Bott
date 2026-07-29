@@ -1,6 +1,6 @@
 import {
   SlashCommandBuilder,
-  CommandInteraction,
+  ChatInputCommandInteraction,
   EmbedBuilder,
   ActionRowBuilder,
   StringSelectMenuBuilder,
@@ -61,7 +61,7 @@ const command: Command = {
         )
     ),
 
-  async execute(interaction: CommandInteraction) {
+  async execute(interaction: ChatInputCommandInteraction) {
     if (!interaction.isChatInputCommand()) return;
     const subcommand = interaction.options.getSubcommand();
 
@@ -78,7 +78,7 @@ const command: Command = {
   },
 };
 
-async function handleProfile(interaction: CommandInteraction): Promise<void> {
+async function handleProfile(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply();
 
   const targetUser = interaction.options.getUser("player", true);
@@ -197,7 +197,7 @@ async function handleProfile(interaction: CommandInteraction): Promise<void> {
   }
 }
 
-async function handleStats(interaction: CommandInteraction): Promise<void> {
+async function handleStats(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply();
 
   const targetUser = interaction.options.getUser("player", true);
@@ -266,7 +266,7 @@ async function handleStats(interaction: CommandInteraction): Promise<void> {
   }
 }
 
-async function handleLeaderboard(interaction: CommandInteraction): Promise<void> {
+async function handleLeaderboard(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply();
 
   const selectedType = interaction.options.getString("type") ?? "goals";
@@ -282,7 +282,7 @@ async function handleLeaderboard(interaction: CommandInteraction): Promise<void>
 }
 
 async function showLeaderboard(
-  interaction: CommandInteraction,
+  interaction: ChatInputCommandInteraction,
   type: string
 ) {
   let players: Array<{
