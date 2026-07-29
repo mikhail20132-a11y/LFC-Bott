@@ -2,9 +2,9 @@ import {
   SlashCommandBuilder,
   ChatInputCommandInteraction,
   EmbedBuilder,
-  PermissionFlagsBits,
 } from "discord.js";
 import { prisma } from "../../database/prisma.js";
+import { hasRole, RoleType } from "../../utils/permissions.js";
 import { createSuccessEmbed, createErrorEmbed, BRAND } from "../../utils/helpers.js";
 import type { Command } from "../../types/index.js";
 
@@ -12,13 +12,18 @@ const command: Command = {
   data: new SlashCommandBuilder()
     .setName("demote")
     .setDescription("Demote a player — removes their leadership role")
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .addUserOption((opt) =>
       opt.setName("player").setDescription("The player to demote").setRequired(true)
     ),
 
   async execute(interaction: ChatInputCommandInteraction) {
     await interaction.deferReply();
+
+    if (!hasRole(interaction.member as never, RoleType.Manager) &&
+        !hasRole(interaction.member as never, RoleType.AssistantManager)) {
+      await interaction.editReply({ embeds: [createErrorEmbed("❌ Insufficient Permissions", "You need **Manager** or **Assistant Manager** role.")] });
+      return;
+    }
 
     const targetUser = interaction.options.getUser("player", true);
 
