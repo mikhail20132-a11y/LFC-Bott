@@ -1,6 +1,6 @@
 import {
   SlashCommandBuilder,
-  CommandInteraction,
+  ChatInputCommandInteraction,
   EmbedBuilder,
 } from "discord.js";
 import { matchService } from "../../services/matchService.js";
@@ -112,7 +112,7 @@ const command: Command = {
         )
     ),
 
-  async execute(interaction: CommandInteraction) {
+  async execute(interaction: ChatInputCommandInteraction) {
     if (!interaction.isChatInputCommand()) return;
     const subcommand = interaction.options.getSubcommand();
 
@@ -131,20 +131,20 @@ const command: Command = {
   },
 };
 
-async function handleCreate(interaction: CommandInteraction): Promise<void> {
+async function handleCreate(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply();
 
   const member = interaction.member;
   if (
-    !hasRole(member as never, RoleType.Founder) &&
-    !hasRole(member as never, RoleType.LeagueManagement) &&
+    !hasRole(member as never, RoleType.Manager) &&
+    !hasRole(member as never, RoleType.AssistantManager) &&
     !hasRole(member as never, RoleType.Referee)
   ) {
     await interaction.editReply({
       embeds: [
         createErrorEmbed(
           "❌ Insufficient Permissions",
-          "You need **Founder**, **League Management**, or **Referee** role to create matches."
+          "You need **Manager**, **Assistant Manager**, or **Referee** role to create matches."
         ),
       ],
     });
@@ -219,13 +219,13 @@ async function handleCreate(interaction: CommandInteraction): Promise<void> {
   }
 }
 
-async function handleStart(interaction: CommandInteraction): Promise<void> {
+async function handleStart(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply();
 
   const member = interaction.member;
   if (
-    !hasRole(member as never, RoleType.Founder) &&
-    !hasRole(member as never, RoleType.LeagueManagement) &&
+    !hasRole(member as never, RoleType.Manager) &&
+    !hasRole(member as never, RoleType.AssistantManager) &&
     !hasRole(member as never, RoleType.Referee)
   ) {
     await interaction.editReply({
@@ -266,13 +266,13 @@ async function handleStart(interaction: CommandInteraction): Promise<void> {
   }
 }
 
-async function handleReport(interaction: CommandInteraction): Promise<void> {
+async function handleReport(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply();
 
   const member = interaction.member;
   if (
-    !hasRole(member as never, RoleType.Founder) &&
-    !hasRole(member as never, RoleType.LeagueManagement) &&
+    !hasRole(member as never, RoleType.Manager) &&
+    !hasRole(member as never, RoleType.AssistantManager) &&
     !hasRole(member as never, RoleType.Referee)
   ) {
     await interaction.editReply({
@@ -318,13 +318,13 @@ async function handleReport(interaction: CommandInteraction): Promise<void> {
   await interaction.editReply({ embeds: [embed] });
 }
 
-async function handleFinish(interaction: CommandInteraction): Promise<void> {
+async function handleFinish(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply();
 
   const member = interaction.member;
   if (
-    !hasRole(member as never, RoleType.Founder) &&
-    !hasRole(member as never, RoleType.LeagueManagement) &&
+    !hasRole(member as never, RoleType.Manager) &&
+    !hasRole(member as never, RoleType.AssistantManager) &&
     !hasRole(member as never, RoleType.Referee)
   ) {
     await interaction.editReply({
