@@ -44,7 +44,7 @@ async function showBoard(interaction: CommandInteraction, type: string) {
     }
     case "saves": {
       const players = await prisma.player.findMany({ where: { position: "Goalkeeper" }, orderBy: { saves: "desc" }, take: 10, include: { user: true, team: true } });
-      embed = new EmbedBuilder().setTitle("🧤 Golden Glove — Top Saves").setColor("#00AA00")
+      embed = new EmbedBuilder().setTitle("🧤 Golden Glove — Top Saves").setColor(BRAND.colors.success)
         .setDescription(players.length ? players.map((p, i) => `${i + 1}. **${p.user.globalName ?? p.user.username}**${p.team ? ` (${p.team.name})` : ""} — **${p.saves} saves** | 🧹 ${p.cleanSheets} CS`).join("\n") : "No data.")
         .setFooter({ text: "Legacy Football Championship" }).setTimestamp();
       break;
