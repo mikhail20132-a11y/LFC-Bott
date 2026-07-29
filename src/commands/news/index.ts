@@ -1,6 +1,6 @@
 import {
   SlashCommandBuilder,
-  CommandInteraction,
+  ChatInputCommandInteraction,
   ChannelType,
   EmbedBuilder,
 } from "discord.js";
@@ -30,7 +30,7 @@ const command: Command = {
     .addSubcommand((sub) =>
       sub
         .setName("setchannel")
-        .setDescription("Set the news broadcast channel (Management only)")
+        .setDescription("Set the news broadcast channel (Manager/Assistant Manager only)")
         .addChannelOption((opt) =>
           opt
             .setName("channel")
@@ -55,7 +55,7 @@ const command: Command = {
     .addSubcommand((sub) =>
       sub
         .setName("broadcast")
-        .setDescription("Send a breaking news broadcast (Management only)")
+        .setDescription("Send a breaking news broadcast (Manager/Assistant Manager only)")
         .addStringOption((opt) =>
           opt
             .setName("title")
@@ -84,10 +84,10 @@ const command: Command = {
     .addSubcommand((sub) =>
       sub
         .setName("roundup")
-        .setDescription("Generate a weekly league roundup (Management only)")
+        .setDescription("Generate a weekly league roundup (Manager/Assistant Manager only)")
     ),
 
-  async execute(interaction: CommandInteraction) {
+  async execute(interaction: ChatInputCommandInteraction) {
     if (!interaction.isChatInputCommand()) return;
     const subcommand = interaction.options.getSubcommand();
 
@@ -106,19 +106,19 @@ const command: Command = {
   },
 };
 
-async function handleSetChannel(interaction: CommandInteraction): Promise<void> {
+async function handleSetChannel(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply();
 
   const member = interaction.member;
   if (
-    !hasRole(member as never, RoleType.Founder) &&
-    !hasRole(member as never, RoleType.LeagueManagement)
+    !hasRole(member as never, RoleType.Manager) &&
+    !hasRole(member as never, RoleType.AssistantManager)
   ) {
     await interaction.editReply({
       embeds: [
         createErrorEmbed(
           "❌ Insufficient Permissions",
-          "You need **Founder** or **League Management** role."
+          "You need **Manager** or **Assistant Manager** role."
         ),
       ],
     });
@@ -158,7 +158,7 @@ async function handleSetChannel(interaction: CommandInteraction): Promise<void> 
   await interaction.editReply({ embeds: [embed] });
 }
 
-async function handleLatest(interaction: CommandInteraction): Promise<void> {
+async function handleLatest(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply();
 
   const count = interaction.options.getInteger("count") ?? 5;
@@ -202,19 +202,19 @@ async function handleLatest(interaction: CommandInteraction): Promise<void> {
   }
 }
 
-async function handleBroadcast(interaction: CommandInteraction): Promise<void> {
+async function handleBroadcast(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply({ ephemeral: true });
 
   const member = interaction.member;
   if (
-    !hasRole(member as never, RoleType.Founder) &&
-    !hasRole(member as never, RoleType.LeagueManagement)
+    !hasRole(member as never, RoleType.Manager) &&
+    !hasRole(member as never, RoleType.AssistantManager)
   ) {
     await interaction.editReply({
       embeds: [
         createErrorEmbed(
           "❌ Insufficient Permissions",
-          "Only **Founder** or **League Management** can broadcast."
+          "Only **Manager** or **Assistant Manager** can broadcast."
         ),
       ],
     });
@@ -256,19 +256,19 @@ async function handleBroadcast(interaction: CommandInteraction): Promise<void> {
   }
 }
 
-async function handleRoundup(interaction: CommandInteraction): Promise<void> {
+async function handleRoundup(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply({ ephemeral: true });
 
   const member = interaction.member;
   if (
-    !hasRole(member as never, RoleType.Founder) &&
-    !hasRole(member as never, RoleType.LeagueManagement)
+    !hasRole(member as never, RoleType.Manager) &&
+    !hasRole(member as never, RoleType.AssistantManager)
   ) {
     await interaction.editReply({
       embeds: [
         createErrorEmbed(
           "❌ Insufficient Permissions",
-          "You need **Founder** or **League Management** role."
+          "You need **Manager** or **Assistant Manager** role."
         ),
       ],
     });
