@@ -197,7 +197,7 @@ async function handleCreate(interaction: ChatInputCommandInteraction): Promise<v
 
     const embed = new EmbedBuilder()
       .setTitle("⚽ Match Scheduled")
-      .setColor("#00AA00")
+      .setColor(BRAND.colors.success)
       .addFields(
         { name: "🏠 Home", value: homeTeam.name, inline: true },
         { name: "🆚", value: "vs", inline: true },
@@ -246,7 +246,7 @@ async function handleStart(interaction: ChatInputCommandInteraction): Promise<vo
 
     const embed = new EmbedBuilder()
       .setTitle("⚽ Match Started!")
-      .setColor("#FFAA00")
+      .setColor(BRAND.colors.warning)
       .setDescription(
         `**${match.homeTeamId}** vs **${match.awayTeamId}** is now **LIVE**!`
       )
@@ -304,7 +304,7 @@ async function handleReport(interaction: ChatInputCommandInteraction): Promise<v
 
   const embed = new EmbedBuilder()
     .setTitle(`${eventEmojis[eventType] ?? "📋"} Match Event Reported`)
-    .setColor("#00AA00")
+    .setColor(BRAND.colors.success)
     .addFields(
       { name: "🔢 Match ID", value: matchId.slice(0, 8), inline: true },
       { name: "📋 Event", value: eventType.toUpperCase(), inline: true },
@@ -410,7 +410,7 @@ async function handleFinish(interaction: ChatInputCommandInteraction): Promise<v
 
     const embed = new EmbedBuilder()
       .setTitle("✅ Match Finished!")
-      .setColor("#00AA00")
+      .setColor(BRAND.colors.success)
       .setDescription(
         `**${match.homeTeamId}** ${match.homeScore} - ${match.awayScore} **${match.awayTeamId}**`
       )
