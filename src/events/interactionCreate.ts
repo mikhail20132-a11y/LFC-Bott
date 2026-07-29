@@ -5,6 +5,7 @@ import {
   ButtonInteraction,
   EmbedBuilder,
   StringSelectMenuInteraction,
+  ChannelSelectMenuInteraction,
 } from "discord.js";
 import { prisma } from "../database/prisma.js";
 import { contractService } from "../services/contractService.js";
@@ -14,15 +15,24 @@ import {
   handlePanelSelect,
   showMainPanel,
 } from "../services/panelHandler.js";
+import {
+  handleSetupButton,
+  handleSetupSelect,
+  handleSetupChannelSelect,
+} from "../commands/setup/index.js";
 import type { ExtendedClient, TeamRole } from "../types/index.js";
 
 const event = {
   name: Events.InteractionCreate,
   async execute(
-    interaction: CommandInteraction | ButtonInteraction | StringSelectMenuInteraction
+    interaction: CommandInteraction | ButtonInteraction | StringSelectMenuInteraction | ChannelSelectMenuInteraction
   ) {
     // ─── STRING SELECT MENU ───
     if (interaction.isStringSelectMenu()) {
+      // Route setup panel select menus
+      if (interaction.customId.startsWith("sp_")) {
+        return handleSetupSelect(interaction);
+      }
       // Route panel select menus
       if (interaction.customId.startsWith("panel_")) {
         return handlePanelSelect(interaction);
@@ -30,8 +40,20 @@ const event = {
       return;
     }
 
+    // ─── CHANNEL SELECT MENU ───
+    if (interaction.isChannelSelectMenu()) {
+      if (interaction.customId.startsWith("sp_setchannel:")) {
+        return handleSetupChannelSelect(interaction);
+      }
+      return;
+    }
+
     // ─── BUTTON INTERACTIONS ───
     if (interaction.isButton()) {
+      // Route setup panel buttons
+      if (interaction.customId.startsWith("sp_")) {
+        return handleSetupButton(interaction);
+      }
       // Route panel buttons
       if (interaction.customId.startsWith("panel_")) {
         return handlePanelButton(interaction);
