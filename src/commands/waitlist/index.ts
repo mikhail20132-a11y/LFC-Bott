@@ -1,6 +1,6 @@
 import {
   SlashCommandBuilder,
-  CommandInteraction,
+  ChatInputCommandInteraction,
   EmbedBuilder,
 } from "discord.js";
 import { prisma } from "../../database/prisma.js";
@@ -73,7 +73,7 @@ const command: Command = {
         )
     ),
 
-  async execute(interaction: CommandInteraction) {
+  async execute(interaction: ChatInputCommandInteraction) {
     if (!interaction.isChatInputCommand()) return;
     const subcommand = interaction.options.getSubcommand();
 
@@ -93,7 +93,7 @@ const command: Command = {
   },
 };
 
-async function handleView(interaction: CommandInteraction): Promise<void> {
+async function handleView(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply();
 
   const guildId = interaction.guildId;
@@ -164,19 +164,19 @@ async function handleView(interaction: CommandInteraction): Promise<void> {
   }
 }
 
-async function handleAdd(interaction: CommandInteraction): Promise<void> {
+async function handleAdd(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply();
 
   const member = interaction.member;
   if (
-    !hasRole(member as never, RoleType.Founder) &&
-    !hasRole(member as never, RoleType.LeagueManagement)
+    !hasRole(member as never, RoleType.Manager) &&
+    !hasRole(member as never, RoleType.AssistantManager)
   ) {
     await interaction.editReply({
       embeds: [
         createErrorEmbed(
           "❌ Insufficient Permissions",
-          "You need **Founder** or **League Management** role to manage the waitlist."
+          "You need **Manager** or **Assistant Manager** role to manage the waitlist."
         ),
       ],
     });
@@ -257,19 +257,19 @@ async function handleAdd(interaction: CommandInteraction): Promise<void> {
   }
 }
 
-async function handleRemove(interaction: CommandInteraction): Promise<void> {
+async function handleRemove(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply();
 
   const member = interaction.member;
   if (
-    !hasRole(member as never, RoleType.Founder) &&
-    !hasRole(member as never, RoleType.LeagueManagement)
+    !hasRole(member as never, RoleType.Manager) &&
+    !hasRole(member as never, RoleType.AssistantManager)
   ) {
     await interaction.editReply({
       embeds: [
         createErrorEmbed(
           "❌ Insufficient Permissions",
-          "You need **Founder** or **League Management** role to manage the waitlist."
+          "You need **Manager** or **Assistant Manager** role to manage the waitlist."
         ),
       ],
     });
