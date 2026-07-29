@@ -19,7 +19,7 @@ const command: Command = {
 
     const embed = new EmbedBuilder()
       .setTitle("🆓 Free Agents")
-      .setColor("#00AA00");
+      .setColor(BRAND.colors.success);
 
     if (freeAgents.length === 0) {
       embed.setDescription("No free agents available. All players are under contract.");
