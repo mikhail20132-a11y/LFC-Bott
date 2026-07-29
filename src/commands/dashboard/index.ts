@@ -42,7 +42,7 @@ async function showDashboard(interaction: CommandInteraction, tab: string) {
       const contract = await contractService.getActiveContract(player.id);
       embed = new EmbedBuilder()
         .setTitle("📝 My Contract")
-        .setColor("#00AA00")
+        .setColor(BRAND.colors.success)
         .setDescription(contract
           ? `**Club:** ${contract.team.name}\n**Role:** ${contract.roleInTeam ?? "Starter"}\n**Signed:** <t:${Math.floor(contract.signedAt.getTime() / 1000)}:R>`
           : "No active contract. You're a free agent.")
@@ -53,7 +53,7 @@ async function showDashboard(interaction: CommandInteraction, tab: string) {
       const activeStat = player.seasonStats.find((s) => s.season.isActive);
       embed = new EmbedBuilder()
         .setTitle("📊 My Stats")
-        .setColor("#00AA00")
+        .setColor(BRAND.colors.success)
         .addFields(
           { name: "📈 This Season", value: activeStat
             ? `⚽ ${activeStat.goals}G | 🎯 ${activeStat.assists}A | 🧤 ${activeStat.saves}S | 🏆 ${activeStat.mvps}MVP\n📋 ${activeStat.appearances}Apps | 🧹 ${activeStat.cleanSheets}CS`
@@ -93,7 +93,7 @@ async function showDashboard(interaction: CommandInteraction, tab: string) {
       embed = new EmbedBuilder()
         .setTitle(`👋 Welcome, ${interaction.user.username}`)
         .setThumbnail(interaction.user.displayAvatarURL())
-        .setColor("#00AA00")
+        .setColor(BRAND.colors.success)
         .setDescription(`**LFC ID:** ${player.lfcId}\n**Club:** ${player.team?.name ?? "🆓 Free Agent"}\n**Position:** ${player.position} | **Region:** ${player.region}`)
         .addFields(
           { name: "⚽ Season Stats", value: `⚽${player.goals}G 🎯${player.assists}A 🏆${player.mvps}MVP`, inline: true },
