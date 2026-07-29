@@ -27,6 +27,22 @@ async function registerSlashCommands(client: ExtendedClient) {
   const commandsJson = [...client.commands.values()].map((cmd: any) => cmd.data.toJSON());
   const rest = new REST({ version: "10" }).setToken(token);
 
+  // GUILD-BASED REGISTRATION (instant) — falls back to global
+  const guildId = process.env.GUILD_ID;
+  if (guildId) {
+    try {
+      console.log(`[Register] Registering ${commandsJson.length} commands to guild ${guildId}...`);
+      const data = await rest.put(
+        Routes.applicationGuildCommands(clientId, guildId),
+        { body: commandsJson }
+      );
+      console.log(`[Register] ✅ Registered ${(data as any[]).length} commands to guild (instant!).`);
+    } catch (error) {
+      console.error(`[Register] Guild registration failed:`, error);
+    }
+  }
+
+  // GLOBAL REGISTRATION (slow, propagates over time)
   try {
     console.log(`[Register] Registering ${commandsJson.length} global commands...`);
     const data = await rest.put(Routes.applicationCommands(clientId), { body: commandsJson });
