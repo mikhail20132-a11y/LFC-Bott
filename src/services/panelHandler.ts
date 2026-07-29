@@ -5,13 +5,9 @@ import {
   ButtonStyle,
   StringSelectMenuBuilder,
   StringSelectMenuOptionBuilder,
-  CommandInteraction,
-  ButtonInteraction,
-  StringSelectMenuInteraction,
-  GuildMember,
+  PermissionFlagsBits,
 } from "discord.js";
 import { prisma } from "../database/prisma.js";
-import { hasRole, RoleType } from "../utils/permissions.js";
 import { createErrorEmbed } from "../utils/helpers.js";
 
 const DASHBOARD = "dashboard";
@@ -19,17 +15,19 @@ const TEAMS = "teams";
 const FREEAGENTS = "freeagents";
 const AUTOMAP = "automap";
 
-function isAuthorized(member) {
-  return hasRole(member, RoleType.Manager) || hasRole(member, RoleType.AssistantManager);
+function isAdmin(member) {
+  return member && member.permissions && member.permissions.has(PermissionFlagsBits.Administrator);
 }
 
 export async function showMainPanel(interaction, tab) {
   tab = tab || DASHBOARD;
   const member = interaction.member;
-  if (!isAuthorized(member)) {
-    await interaction.editReply({
-      embeds: [createErrorEmbed("Access Denied", "Manager or Assistant Manager role required.")],
-    });
+  if (!isAdmin(member)) {
+    try {
+      await interaction.editReply({
+        embeds: [createErrorEmbed("Access Denied", "Administrator permission required.")],
+      });
+    } catch {}
     return;
   }
 
@@ -118,7 +116,7 @@ async function buildDashboardView() {
         inline: true,
       }
     )
-    .setFooter({ text: "Management Panel | " + new Date().toLocaleDateString() })
+    .setFooter({ text: "Management Panel | Admins only" })
     .setTimestamp();
 
   return { embed, components: [] };
@@ -284,7 +282,7 @@ async function buildAutoMapView() {
 export async function handlePanelButton(interaction) {
   if (!interaction.isButton()) return;
   const member = interaction.member;
-  if (!isAuthorized(member)) {
+  if (!isAdmin(member)) {
     await interaction.reply({ content: "Access denied.", ephemeral: true });
     return;
   }
@@ -333,7 +331,6 @@ export async function handlePanelButton(interaction) {
           const member = await guild.members.fetch(player.discordId).catch(function() { return null; });
           if (!member) { teamFail++; continue; }
 
-          // Remove other team roles
           for (const otherTeam of teams) {
             if (otherTeam.id !== team.id && otherTeam.roleId) {
               const otherRole = guild.roles.cache.get(otherTeam.roleId);
@@ -383,7 +380,7 @@ export async function handlePanelButton(interaction) {
 export async function handlePanelSelect(interaction) {
   if (!interaction.isStringSelectMenu()) return;
   const member = interaction.member;
-  if (!isAuthorized(member)) {
+  if (!isAdmin(member)) {
     await interaction.reply({ content: "Access denied.", ephemeral: true });
     return;
   }
