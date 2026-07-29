@@ -14,7 +14,7 @@ import { teamService } from "../../services/teamService.js";
 import { playerService } from "../../services/playerService.js";
 import { prisma } from "../../database/prisma.js";
 import { hasRole, RoleType } from "../../utils/permissions.js";
-import { createErrorEmbed, createSuccessEmbed, formatDate } from "../../utils/helpers.js";
+import { createErrorEmbed, createSuccessEmbed, formatDate, BRAND } from "../../utils/helpers.js";
 import type { Command, ExtendedClient } from "../../types/index.js";
 
 const command: Command = {
