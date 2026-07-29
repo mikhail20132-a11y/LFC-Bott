@@ -178,7 +178,7 @@ async function handleCreate(interaction: ChatInputCommandInteraction): Promise<v
 
     const embed = new EmbedBuilder()
       .setTitle(`${emoji || "🏟️"} Team Created: ${team.name}`)
-      .setColor("#00AA00")
+      .setColor(BRAND.colors.success)
       .addFields(
         { name: "📛 Name", value: team.name, inline: true },
         {
@@ -234,7 +234,7 @@ async function handleInfo(interaction: ChatInputCommandInteraction): Promise<voi
 
     const embed = new EmbedBuilder()
       .setTitle(`🏟️ ${team.name} ${team.shortName ? `(${team.shortName})` : ""}`)
-      .setColor("#00AA00")
+      .setColor(BRAND.colors.success)
       .addFields(
         {
           name: "👤 Manager",
@@ -331,7 +331,7 @@ async function handleRoster(interaction: ChatInputCommandInteraction): Promise<v
 
     const embed = new EmbedBuilder()
       .setTitle(`👥 ${team.name} — Squad Roster`)
-      .setColor("#00AA00");
+      .setColor(BRAND.colors.success);
 
     let totalPlayers = 0;
 
@@ -409,7 +409,7 @@ async function handleStats(interaction: ChatInputCommandInteraction): Promise<vo
 
     const embed = new EmbedBuilder()
       .setTitle(`📊 ${team.name} — Statistics`)
-      .setColor("#00AA00");
+      .setColor(BRAND.colors.success);
 
     // Season-by-season breakdown
     if (team.seasonTeams.length > 0) {
