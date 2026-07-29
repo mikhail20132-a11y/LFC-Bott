@@ -98,7 +98,7 @@ async function showBoard(interaction: CommandInteraction, type: string) {
 function makeBoardEmbed(title: string, color: string, players: Array<{ user: { username: string; globalName: string | null }; team: { name: string } | null; goals: number; assists: number; mvps: number; appearances: number }>, key: string, suffix: string) {
   return new EmbedBuilder().setTitle(title).setColor(color as never)
     .setDescription(players.length
-      ? players.map((p, i) => `${i + 1}. **${p.user.globalName ?? p.user.username}**${p.team ? ` (${p.team.name})` : ""} — **${(p as Record<string, number>)[key] ?? 0}${suffix}**`).join("\n")
+      ? players.map((p, i) => `${i + 1}. **${p.user.globalName ?? p.user.username}**${p.team ? ` (${p.team.name})` : ""} — **${(p as any)[key] ?? 0}${suffix}**`).join("\n")
       : "No data.")
     .setFooter({ text: "Legacy Football Championship" }).setTimestamp();
 }
