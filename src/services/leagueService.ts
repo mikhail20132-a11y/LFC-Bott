@@ -69,12 +69,26 @@ export class LeagueService {
   }
 
   /**
+   * Alias for backward compatibility.
+   */
+  async startNewSeason(name: string) {
+    return this.createSeason(name);
+  }
+
+  /**
    * Create a new season.
    */
   async createSeason(name: string) {
     return prisma.season.create({
       data: { name, isActive: true },
     });
+  }
+
+  /**
+   * Alias for backward compatibility.
+   */
+  async endCurrentSeason() {
+    return this.endActiveSeason();
   }
 
   /**
