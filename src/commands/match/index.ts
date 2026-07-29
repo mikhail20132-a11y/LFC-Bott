@@ -9,7 +9,7 @@ import { teamService } from "../../services/teamService.js";
 import { newsService } from "../../services/newsService.js";
 import { prisma } from "../../database/prisma.js";
 import { hasRole, RoleType } from "../../utils/permissions.js";
-import { BRAND } from "../../utils/helpers.js";
+import { BRAND, createErrorEmbed, formatDate } from "../../utils/helpers.js";
 import type { Command, ExtendedClient } from "../../types/index.js";
 
 const command: Command = {
