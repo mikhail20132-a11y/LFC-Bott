@@ -1,6 +1,6 @@
 import {
   SlashCommandBuilder,
-  CommandInteraction,
+  ChatInputCommandInteraction,
   EmbedBuilder,
 } from "discord.js";
 import { prisma } from "../../database/prisma.js";
@@ -20,7 +20,7 @@ const command: Command = {
     .setDescription("View a player's profile card")
     .addUserOption((o) => o.setName("player").setDescription("Player to view").setRequired(true)),
 
-  async execute(interaction: CommandInteraction) {
+  async execute(interaction: ChatInputCommandInteraction) {
     if (!interaction.isChatInputCommand()) return;
     await interaction.deferReply();
 
@@ -42,7 +42,7 @@ const command: Command = {
 
     const embed = new EmbedBuilder()
       .setTitle(`🎴 ${target.username} — Player Card`)
-      .setColor(color)
+      .setColor(color as any)
       .setThumbnail(target.displayAvatarURL())
       .addFields(
         { name: "⭐ Rating", value: `${rating}/99`, inline: true },
