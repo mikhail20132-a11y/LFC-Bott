@@ -1,6 +1,7 @@
 import {
   Events,
   CommandInteraction,
+  AutocompleteInteraction,
   GuildMember,
   ButtonInteraction,
   EmbedBuilder,
@@ -25,7 +26,7 @@ import type { ExtendedClient, TeamRole } from "../types/index.js";
 const event = {
   name: Events.InteractionCreate,
   async execute(
-    interaction: CommandInteraction | ButtonInteraction | StringSelectMenuInteraction | ChannelSelectMenuInteraction
+    interaction: CommandInteraction | ButtonInteraction | StringSelectMenuInteraction | ChannelSelectMenuInteraction | AutocompleteInteraction
   ) {
     // ─── STRING SELECT MENU ───
     if (interaction.isStringSelectMenu()) {
@@ -60,6 +61,29 @@ const event = {
       }
       // Route offer buttons
       return handleOfferButton(interaction);
+    }
+
+    // ─── AUTOCOMPLETE ───
+    if (interaction.isAutocomplete()) {
+      const focusedName = interaction.options.getFocused().toString().toLowerCase();
+      const commandName = interaction.commandName;
+
+      try {
+        if (["team", "club", "match"].includes(commandName)) {
+          const teams = await prisma.team.findMany({
+            where: { name: { contains: focusedName, mode: "insensitive" } },
+            take: 10,
+            orderBy: { name: "asc" },
+          });
+          await interaction.respond(
+            teams.map(t => ({ name: `${t.emoji || "🏟️"} ${t.name}`, value: t.name }))
+          );
+          return;
+        }
+      } catch {
+        await interaction.respond([]);
+      }
+      return;
     }
 
     // ─── SLASH COMMANDS ONLY ───
