@@ -18,7 +18,7 @@ const command: Command = {
     .addSubcommand((sub) =>
       sub
         .setName("create")
-        .setDescription("Create a new team (Management only)")
+        .setDescription("Create a new team (Manager/Assistant Manager only)")
         .addStringOption((opt) =>
           opt
             .setName("name")
@@ -106,14 +106,14 @@ async function handleCreate(interaction: CommandInteraction): Promise<void> {
   // Permission check
   const member = interaction.member;
   if (
-    !hasRole(member as never, RoleType.Founder) &&
-    !hasRole(member as never, RoleType.LeagueManagement)
+    !hasRole(member as never, RoleType.Manager) &&
+    !hasRole(member as never, RoleType.AssistantManager)
   ) {
     await interaction.editReply({
       embeds: [
         createErrorEmbed(
           "❌ Insufficient Permissions",
-          "You need the **Founder** or **League Management** role to create teams."
+          "You need the **Manager** or **Assistant Manager** role to create teams."
         ),
       ],
     });
