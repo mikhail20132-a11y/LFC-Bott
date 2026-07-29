@@ -52,11 +52,16 @@ export interface LeagueStanding {
   points: number;
 }
 
-export type Position =
+export type PositionCategory =
   | "Goalkeeper"
   | "Defender"
   | "Midfielder"
   | "Forward";
+
+export type Position =
+  | "GK" | "CB" | "LB" | "RB"
+  | "CDM" | "CM" | "CAM"
+  | "LW" | "RW" | "LF" | "RF" | "CF" | "ST";
 
 export type Region =
   | "Europe"
