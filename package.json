@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "type": "module",
   "scripts": {
-    "build": "prisma generate && tsc",
+    "build": "prisma generate && npx -p typescript tsc -p tsconfig.json --outDir dist",
     "start": "prisma db push && tsx src/index.ts",
     "dev": "tsx watch src/index.ts",
     "postinstall": "prisma generate",
