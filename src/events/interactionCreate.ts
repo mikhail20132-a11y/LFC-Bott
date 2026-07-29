@@ -12,11 +12,6 @@ import { prisma } from "../database/prisma.js";
 import { contractService } from "../services/contractService.js";
 import { claimOffer } from "../services/offerSessionStore.js";
 import {
-  handlePanelButton,
-  handlePanelSelect,
-  showMainPanel,
-} from "../services/panelHandler.js";
-import {
   handleSetupButton,
   handleSetupSelect,
   handleSetupChannelSelect,
@@ -28,38 +23,23 @@ const event = {
   async execute(
     interaction: CommandInteraction | ButtonInteraction | StringSelectMenuInteraction | ChannelSelectMenuInteraction | AutocompleteInteraction
   ) {
-    // ─── STRING SELECT MENU ───
-    if (interaction.isStringSelectMenu()) {
-      // Route setup panel select menus
-      if (interaction.customId.startsWith("sp_")) {
-        return handleSetupSelect(interaction);
-      }
-      // Route panel select menus
-      if (interaction.customId.startsWith("panel_")) {
-        return handlePanelSelect(interaction);
-      }
-      return;
+    // ─── SETUP PANEL BUTTONS ───
+    if (interaction.isButton() && interaction.customId.startsWith("sp_")) {
+      return handleSetupButton(interaction);
     }
 
-    // ─── CHANNEL SELECT MENU ───
-    if (interaction.isChannelSelectMenu()) {
-      if (interaction.customId.startsWith("sp_setchannel:")) {
-        return handleSetupChannelSelect(interaction);
-      }
-      return;
+    // ─── SETUP PANEL STRING SELECT MENUS ───
+    if (interaction.isStringSelectMenu() && interaction.customId.startsWith("sp_")) {
+      return handleSetupSelect(interaction);
     }
 
-    // ─── BUTTON INTERACTIONS ───
+    // ─── SETUP PANEL CHANNEL SELECT MENUS ───
+    if (interaction.isChannelSelectMenu() && interaction.customId.startsWith("sp_")) {
+      return handleSetupChannelSelect(interaction);
+    }
+
+    // ─── OFFER BUTTONS ───
     if (interaction.isButton()) {
-      // Route setup panel buttons
-      if (interaction.customId.startsWith("sp_")) {
-        return handleSetupButton(interaction);
-      }
-      // Route panel buttons
-      if (interaction.customId.startsWith("panel_")) {
-        return handlePanelButton(interaction);
-      }
-      // Route offer buttons
       return handleOfferButton(interaction);
     }
 

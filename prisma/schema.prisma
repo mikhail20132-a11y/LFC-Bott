@@ -341,11 +341,18 @@ model Blacklist {
 model GuildConfig {
   id                 String   @id @default(cuid())
   guildId            String   @unique
+  // Channel IDs
   newsChannelId      String?
-  staffRoleId        String?
   demandsChannelId   String?
   appointmentsChannelId String?
   signingsChannelId  String?
+  // Role IDs (mapped from Discord roles)
+  staffRoleId        String?   // Manager role (legacy)
+  managerRoleId      String?   // Manager Discord role
+  assistantManagerRoleId String? // Asst Manager Discord role
+  moderatorRoleId    String?   // Moderator Discord role
+  refereeRoleId      String?   // Referee Discord role
+  // Settings
   signingsEnabled    Boolean  @default(true)
   signingChoice      String   @default("offer")    // "sign" or "offer"
   rosterCap          Int      @default(30)
