@@ -1,6 +1,6 @@
 import {
   SlashCommandBuilder,
-  CommandInteraction,
+  ChatInputCommandInteraction,
   EmbedBuilder,
 } from "discord.js";
 import { prisma } from "../../database/prisma.js";
@@ -18,7 +18,7 @@ const command: Command = {
     .addSubcommand((sub) =>
       sub
         .setName("create")
-        .setDescription("Create a transfer request (Management only)")
+        .setDescription("Create a transfer request (Manager/Assistant Manager only)")
         .addUserOption((opt) =>
           opt
             .setName("player")
@@ -55,7 +55,7 @@ const command: Command = {
         .setDescription("View recent completed transfers")
     ),
 
-  async execute(interaction: CommandInteraction) {
+  async execute(interaction: ChatInputCommandInteraction) {
     if (!interaction.isChatInputCommand()) return;
     const subcommand = interaction.options.getSubcommand();
 
@@ -72,19 +72,19 @@ const command: Command = {
   },
 };
 
-async function handleCreate(interaction: CommandInteraction): Promise<void> {
+async function handleCreate(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply();
 
   const member = interaction.member;
   if (
-    !hasRole(member as never, RoleType.Founder) &&
-    !hasRole(member as never, RoleType.LeagueManagement)
+    !hasRole(member as never, RoleType.Manager) &&
+    !hasRole(member as never, RoleType.AssistantManager)
   ) {
     await interaction.editReply({
       embeds: [
         createErrorEmbed(
           "❌ Insufficient Permissions",
-          "Only **Founder** or **League Management** can create transfers."
+          "Only **Manager** or **Assistant Manager** can create transfers."
         ),
       ],
     });
@@ -146,19 +146,19 @@ async function handleCreate(interaction: CommandInteraction): Promise<void> {
   }
 }
 
-async function handleComplete(interaction: CommandInteraction): Promise<void> {
+async function handleComplete(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply();
 
   const member = interaction.member;
   if (
-    !hasRole(member as never, RoleType.Founder) &&
-    !hasRole(member as never, RoleType.LeagueManagement)
+    !hasRole(member as never, RoleType.Manager) &&
+    !hasRole(member as never, RoleType.AssistantManager)
   ) {
     await interaction.editReply({
       embeds: [
         createErrorEmbed(
           "❌ Insufficient Permissions",
-          "Only **Founder** or **League Management** can complete transfers."
+          "Only **Manager** or **Assistant Manager** can complete transfers."
         ),
       ],
     });
@@ -243,7 +243,7 @@ async function handleComplete(interaction: CommandInteraction): Promise<void> {
   }
 }
 
-async function handleList(interaction: CommandInteraction): Promise<void> {
+async function handleList(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply();
 
   try {
