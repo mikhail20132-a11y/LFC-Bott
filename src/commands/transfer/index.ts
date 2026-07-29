@@ -126,7 +126,7 @@ async function handleCreate(interaction: ChatInputCommandInteraction): Promise<v
 
     const embed = new EmbedBuilder()
       .setTitle("🔄 Transfer Request Created")
-      .setColor("#FFAA00")
+      .setColor(BRAND.colors.warning)
       .addFields(
         { name: "👤 Player", value: `<@${targetUser.id}>`, inline: true },
         { name: "➡️ Destination", value: toTeam.name, inline: true },
@@ -224,7 +224,7 @@ async function handleComplete(interaction: ChatInputCommandInteraction): Promise
 
     const embed = new EmbedBuilder()
       .setTitle("✅ Transfer Completed!")
-      .setColor("#00AA00")
+      .setColor(BRAND.colors.success)
       .addFields(
         { name: "👤 Player", value: transfer.player.user.username, inline: true },
         { name: "➡️ From", value: transfer.fromTeamName ?? "Free Agent", inline: true },
@@ -265,7 +265,7 @@ async function handleList(interaction: ChatInputCommandInteraction): Promise<voi
 
     const embed = new EmbedBuilder()
       .setTitle("🔄 Recent Transfers")
-      .setColor("#00AA00")
+      .setColor(BRAND.colors.success)
       .setDescription(
         transfers
           .map(
