@@ -9,7 +9,7 @@ import { teamService } from "../../services/teamService.js";
 import { newsService } from "../../services/newsService.js";
 import { prisma } from "../../database/prisma.js";
 import { hasRole, RoleType } from "../../utils/permissions.js";
-import { createErrorEmbed, formatDate } from "../../utils/helpers.js";
+import { BRAND } from "../../utils/helpers.js";
 import type { Command, ExtendedClient } from "../../types/index.js";
 
 const command: Command = {
@@ -199,18 +199,46 @@ async function handleCreate(interaction: ChatInputCommandInteraction): Promise<v
       .setTitle("⚽ Match Scheduled")
       .setColor(BRAND.colors.success)
       .addFields(
-        { name: "🏠 Home", value: homeTeam.name, inline: true },
-        { name: "🆚", value: "vs", inline: true },
-        { name: "🚗 Away", value: awayTeam.name, inline: true },
+        { name: "🏠 Home", value: `${homeTeam.emoji || ""} ${homeTeam.name}`, inline: true },
+        { name: "🆚", value: "VS", inline: true },
+        { name: "🚗 Away", value: `${awayTeam.emoji || ""} ${awayTeam.name}`, inline: true },
         { name: "📅 Season", value: activeSeason.name, inline: true },
-        { name: "🔢 Match ID", value: match.id.slice(0, 8), inline: true },
+        { name: "🔢 Match ID", value: `\`${match.id.slice(0, 8)}\``, inline: true },
         { name: "👨‍⚖️ Referee", value: refereeUser ? `<@${refereeUser.id}>` : "TBD", inline: true },
-        { name: "📋 Status", value: "🟢 Scheduled", inline: false }
       )
-      .setFooter({ text: "Use /match start to begin the match" })
+      .setFooter({ text: BRAND.footer })
       .setTimestamp();
 
     await interaction.editReply({ embeds: [embed] });
+
+    // ── Post to news/announcements channel ──
+    try {
+      const config = await prisma.guildConfig.findUnique({
+        where: { guildId: interaction.guildId! },
+      });
+      if (config?.newsChannelId && interaction.guild) {
+        const channel = interaction.guild.channels.cache.get(config.newsChannelId);
+        if (channel?.isTextBased()) {
+          await channel.send({
+            content: `⚽ **Match Scheduled!**`,
+            embeds: [
+              new EmbedBuilder()
+                .setTitle("📅 New Fixture Announced")
+                .setColor(BRAND.colors.success)
+                .setDescription(`${homeTeam.emoji || "🏠"} **${homeTeam.name}** vs ${awayTeam.emoji || "🚗"} **${awayTeam.name}**`)
+                .addFields(
+                  { name: "👨‍⚖️ Referee", value: refereeUser ? `<@${refereeUser.id}>` : "TBD", inline: true },
+                  { name: "🏆 Season", value: activeSeason.name, inline: true },
+                )
+                .setFooter({ text: `Match ID: ${match.id.slice(0, 8)} • ${BRAND.footer}` })
+                .setTimestamp(),
+            ],
+          });
+        }
+      }
+    } catch {
+      // Non-critical
+    }
   } catch (error) {
     console.error("[Match Create Error]", error);
     await interaction.editReply({
