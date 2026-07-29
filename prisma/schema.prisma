@@ -3,337 +3,329 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-/// Guild/server configuration
-model GuildConfig {
-  guildId       String   @id
-  newsChannelId String?
-  createdAt     DateTime @default(now())
+// ─── USER ────────────────────────────────────────────────────────────────────
+
+model DiscordUser {
+  id            String   @id @default(cuid())
+  discordId     String   @unique
+  username      String
+  globalName    String?
+  avatarUrl     String?
+  joinedAt      DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  @@map("guild_config")
-}
-
-/// Discord user accounts linked to the bot.
-/// Has both internal cuid id (used by Team.managerId) and discordId snowflake (used by Player, Warning, Suspension).
-model DiscordUser {
-  id         String   @id @default(cuid())
-  discordId  String   @unique
-  username   String
-  globalName String?
-  avatarUrl  String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  managedTeams Team[]       @relation("TeamManager")
-  player       Player?
-  warnings     Warning[]
-  suspensions  Suspension[]
-  predictions  Prediction[]
+  player        Player?
+  teamsManaged  Team[]    @relation("TeamManager")
+  refereedMatches Match[] @relation("MatchReferee")
+  warnings      Warning[]
+  suspensions   Suspension[]
 
   @@map("discord_users")
 }
 
-/// In-game player profiles.
-/// Uses discordId as PK so player.create works without extra userId setup.
+// ─── PLAYER ──────────────────────────────────────────────────────────────────
+
 model Player {
-  discordId      String   @id
-  lfcId          String   @unique
-  position       String   @default("Midfielder")
-  region         String   @default("Europe")
-  robloxUsername String?
-  roleInTeam     String?
-  goals          Int      @default(0)
-  assists        Int      @default(0)
-  mvps           Int      @default(0)
-  appearances    Int      @default(0)
-  yellowCards    Int      @default(0)
-  redCards       Int      @default(0)
-  cleanSheets    Int      @default(0)
-  saves          Int      @default(0)
-  trophies       Int      @default(0)
-  balance        Float    @default(0)
-  joinedAt       DateTime @default(now())
-  teamId         String?
+  id            String   @id @default(cuid())
+  lfcId         String   @unique
+  discordId     String   @unique
+  robloxUsername String?  // Roblox username for verification
+  robloxId      String?   // Roblox user ID
+  nickname      String?   // Auto-nickname assigned on contract
+  position      String   // Goalkeeper, Defender, Midfielder, Forward
+  region        String   // Europe, Asia, Africa, etc.
+  joinedAt      DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  user DiscordUser @relation(fields: [discordId], references: [discordId])
-  team Team?       @relation(fields: [teamId], references: [id])
+  user          DiscordUser @relation(fields: [discordId], references: [discordId])
+  teamId        String?
+  team          Team?       @relation("TeamPlayers", fields: [teamId], references: [id])
+  roleInTeam    String?     // Captain, Vice Captain, Starter, Sub, Academy
 
-  seasonStats  PlayerSeasonStats[]
-  awards       Award[]
-  matchGoals   MatchGoal[]
-  matchAssists MatchAssist[]
-  matchCards   MatchCard[]
-  matchMvps    MatchMvp[]
-  transfers    Transfer[]
-  contracts    Contract[]
+  // Career stats
+  goals         Int      @default(0)
+  assists       Int      @default(0)
+  saves         Int      @default(0)   // Goalkeeper specific
+  mvps          Int      @default(0)
+  appearances   Int      @default(0)
+  yellowCards   Int      @default(0)
+  redCards      Int      @default(0)
+  cleanSheets   Int      @default(0)   // Goalkeeper specific
+
+  trophies      Int      @default(0)
+  awards        Award[]
+
+  // Season-specific stats
+  seasonStats   PlayerSeasonStats[]
+
+  // Match participation
+  matchGoals    MatchGoal[]
+  matchAssists  MatchAssist[]
+  matchMvps     MatchMvp[]
+
+  // Contract & transfer history
+  contracts     Contract[]
+  transfersFrom Transfer[] @relation("FromPlayer")
+
+  // Lineup participation
+  lineups       LineupPlayer[]
+  matchCards    MatchCard[]
+  weeklyAwards  WeeklyAward[]
+  motmVotes     MotmVote[]
 
   @@map("players")
 }
 
-/// Football teams/clubs.
-model Team {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  shortName   String?
-  description String?
-  emoji       String?
-  roleId      String?
-  logoUrl     String?
-  trophies    Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  managerId   String
-
-  manager DiscordUser @relation("TeamManager", fields: [managerId], references: [id])
-
-  players     Player[]
-  seasonTeams TeamSeasonStats[]
-  homeMatches Match[]            @relation("HomeTeam")
-  awayMatches Match[]            @relation("AwayTeam")
-
-  @@map("teams")
-}
-
-/// Player contracts linking players to teams with role and position.
-model Contract {
-  id         String   @id @default(cuid())
-  playerId   String
-  teamId     String
-  position   String
-  roleInTeam String?
-  signedAt   DateTime @default(now())
-  expiresAt  DateTime?
-  active     Boolean  @default(true)
-
-  player Player @relation(fields: [playerId], references: [discordId])
-  team   Team   @relation(fields: [teamId], references: [id])
-
-  @@map("contracts")
-}
-
-/// Competition seasons.
-model Season {
-  id        String    @id @default(cuid())
-  name      String
-  isActive  Boolean   @default(false)
-  startedAt DateTime  @default(now())
-  endedAt   DateTime?
-  createdAt DateTime  @default(now())
-
-  matches           Match[]
-  teamSeasonStats   TeamSeasonStats[]
-  playerSeasonStats PlayerSeasonStats[]
-  awards            Award[]
-
-  @@map("seasons")
-}
-
-/// Individual matches.
-model Match {
-  id          String   @id @default(cuid())
-  homeTeamId  String
-  awayTeamId  String
-  seasonId    String
-  matchDate   DateTime?
-  status      String   @default("Scheduled")
-  homeScore   Int?
-  awayScore   Int?
-  refereeId   String?
-  weekNumber  Int?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  homeTeam Team   @relation("HomeTeam", fields: [homeTeamId], references: [id])
-  awayTeam Team   @relation("AwayTeam", fields: [awayTeamId], references: [id])
-  season   Season @relation(fields: [seasonId], references: [id])
-
-  goals   MatchGoal[]
-  assists MatchAssist[]
-  cards   MatchCard[]
-  mvps    MatchMvp[]
-
-  @@map("matches")
-}
-
-/// Per-season team statistics (standings).
-model TeamSeasonStats {
-  id           String @id @default(cuid())
-  teamId       String
-  seasonId     String
-  played       Int    @default(0)
-  wins         Int    @default(0)
-  draws        Int    @default(0)
-  losses       Int    @default(0)
-  goalsFor     Int    @default(0)
-  goalsAgainst Int    @default(0)
-  points       Int    @default(0)
-
-  team   Team   @relation(fields: [teamId], references: [id])
-  season Season @relation(fields: [seasonId], references: [id])
-
-  @@unique([teamId, seasonId])
-  @@map("team_season_stats")
-}
-
-/// Per-season player statistics.
 model PlayerSeasonStats {
-  id           String @id @default(cuid())
-  playerId     String
-  seasonId     String
-  goals        Int    @default(0)
-  assists      Int    @default(0)
-  mvps         Int    @default(0)
-  appearances  Int    @default(0)
-  yellowCards  Int    @default(0)
-  redCards     Int    @default(0)
-  cleanSheets  Int    @default(0)
-  saves        Int    @default(0)
+  id          String @id @default(cuid())
+  playerId    String
+  seasonId    String
+  goals       Int    @default(0)
+  assists     Int    @default(0)
+  saves       Int    @default(0)
+  mvps        Int    @default(0)
+  appearances Int    @default(0)
+  yellowCards Int    @default(0)
+  redCards    Int    @default(0)
+  cleanSheets Int    @default(0)
 
-  player Player @relation(fields: [playerId], references: [discordId])
-  season Season @relation(fields: [seasonId], references: [id])
+  player      Player @relation(fields: [playerId], references: [id])
+  season      Season @relation(fields: [seasonId], references: [id])
 
   @@unique([playerId, seasonId])
   @@map("player_season_stats")
 }
 
-/// Goals scored in matches.
-model MatchGoal {
-  id        String  @id @default(cuid())
-  matchId   String
-  playerId  String
-  minute    Int?
-  isOwnGoal Boolean @default(false)
-  isPenalty Boolean @default(false)
+// ─── TEAM ────────────────────────────────────────────────────────────────────
 
-  match  Match  @relation(fields: [matchId], references: [id])
-  player Player @relation(fields: [playerId], references: [discordId])
+model Team {
+  id            String      @id @default(cuid())
+  name          String      @unique
+  shortName     String?     // e.g. "LFC"
+  logoUrl       String?
+  emoji         String?     // Team emoji (e.g. "⚽")
+  description   String?
+  roleId        String?     // Discord role ID for the team
+  managerId     String
+  manager       DiscordUser @relation("TeamManager", fields: [managerId], references: [id])
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  players       Player[]    @relation("TeamPlayers")
+
+  // Season records
+  seasonTeams   TeamSeasonStats[]
+
+  // Home and away matches
+  homeMatches   Match[]     @relation("HomeTeam")
+  awayMatches   Match[]     @relation("AwayTeam")
+
+  contracts     Contract[]
+  lineups       Lineup[]
+
+  trophies      Int         @default(0)
+
+  @@map("teams")
+}
+
+model TeamSeasonStats {
+  id          String  @id @default(cuid())
+  teamId      String
+  seasonId    String
+  played      Int     @default(0)
+  wins        Int     @default(0)
+  draws       Int     @default(0)
+  losses      Int     @default(0)
+  goalsFor    Int     @default(0)
+  goalsAgainst Int    @default(0)
+  points      Int     @default(0)
+
+  team        Team    @relation(fields: [teamId], references: [id])
+  season      Season  @relation(fields: [seasonId], references: [id])
+
+  @@unique([teamId, seasonId])
+  @@map("team_season_stats")
+}
+
+// ─── SEASON ──────────────────────────────────────────────────────────────────
+
+model Season {
+  id          String   @id @default(cuid())
+  name        String   @unique // e.g. "Season 1", "Season 2"
+  isActive    Boolean  @default(false)
+  startedAt   DateTime?
+  endedAt     DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  matches      Match[]
+  playerStats  PlayerSeasonStats[]
+  teamStats    TeamSeasonStats[]
+  awards       Award[]
+  weeklyAwards WeeklyAward[]
+
+  @@map("seasons")
+}
+
+// ─── MATCH ───────────────────────────────────────────────────────────────────
+
+model Match {
+  id          String   @id @default(cuid())
+  matchNumber Int?
+  matchweek   Int?      // Week/fixture number
+  homeTeamId  String
+  awayTeamId  String
+  homeScore   Int      @default(0)
+  awayScore   Int      @default(0)
+  status      String   @default("Scheduled") // Scheduled, Live, Finished, Postponed, Forfeit
+  matchDate   DateTime?
+  refereeId   String?
+  referee     DiscordUser? @relation("MatchReferee", fields: [refereeId], references: [id])
+  seasonId    String
+  season      Season   @relation(fields: [seasonId], references: [id])
+  threadId    String?   // Discord thread ID for live match
+  forfeit     Boolean  @default(false)
+  forfeitingTeam String? // "home" or "away" — who forfeited
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  homeTeam    Team     @relation("HomeTeam", fields: [homeTeamId], references: [id])
+  awayTeam    Team     @relation("AwayTeam", fields: [awayTeamId], references: [id])
+
+  goals       MatchGoal[]
+  assists     MatchAssist[]
+  mvps        MatchMvp[]
+  cards       MatchCard[]
+  lineups     Lineup[]
+  lineupsP    LineupPlayer[]
+  disputes    Dispute[]
+  predictions Prediction[]
+  motmPoll    MotmPoll[]
+
+  @@map("matches")
+}
+
+model MatchGoal {
+  id       String @id @default(cuid())
+  matchId  String
+  playerId String
+  minute   Int?
+  isOwnGoal Boolean @default(false)
+
+  match    Match  @relation(fields: [matchId], references: [id])
+  player   Player @relation(fields: [playerId], references: [id])
 
   @@map("match_goals")
 }
 
-/// Assists in matches.
 model MatchAssist {
-  id       String  @id @default(cuid())
+  id       String @id @default(cuid())
   matchId  String
   playerId String
   minute   Int?
 
-  match  Match  @relation(fields: [matchId], references: [id])
-  player Player @relation(fields: [playerId], references: [discordId])
+  match    Match  @relation(fields: [matchId], references: [id])
+  player   Player @relation(fields: [playerId], references: [id])
 
   @@map("match_assists")
 }
 
-/// Cards given in matches.
-model MatchCard {
-  id       String  @id @default(cuid())
-  matchId  String
-  playerId String
-  type     String
-  minute   Int?
-  reason   String?
-
-  match  Match  @relation(fields: [matchId], references: [id])
-  player Player @relation(fields: [playerId], references: [discordId])
-
-  @@map("match_cards")
-}
-
-/// Match MVPs.
 model MatchMvp {
-  matchId  String  @id
+  id       String @id @default(cuid())
+  matchId  String @unique
   playerId String
   reason   String?
 
-  match  Match  @relation(fields: [matchId], references: [id])
-  player Player @relation(fields: [playerId], references: [discordId])
+  match    Match  @relation(fields: [matchId], references: [id])
+  player   Player @relation(fields: [playerId], references: [id])
 
   @@map("match_mvps")
 }
 
-/// Match predictions placed by users.
-model Prediction {
-  id               String  @id @default(cuid())
-  matchId          String
-  userId           String
-  predictedTeamId  String?
-  predictedDraw    Boolean @default(false)
-  points           Int     @default(0)
+model MatchCard {
+  id       String @id @default(cuid())
+  matchId  String
+  playerId String
+  type     String // Yellow, Red
+  minute   Int?
+  reason   String?
 
-  match           Match       @relation(fields: [matchId], references: [id])
-  predictiveUser  DiscordUser @relation(fields: [userId], references: [discordId])
+  match    Match  @relation(fields: [matchId], references: [id])
+  player   Player @relation(fields: [playerId], references: [id])
 
-  @@unique([matchId, userId])
-  @@map("predictions")
+  @@map("match_cards")
 }
 
-/// Seasonal awards given to players.
+// ─── AWARD ───────────────────────────────────────────────────────────────────
+
 model Award {
   id        String   @id @default(cuid())
-  type      String
+  type      String   // Golden Boot, Golden Boy, Best Playmaker, etc.
   playerId  String
   seasonId  String
   reason    String?
-  grantedAt DateTime @default(now())
+  awardedAt DateTime @default(now())
 
-  player Player @relation(fields: [playerId], references: [discordId])
-  season Season @relation(fields: [seasonId], references: [id])
+  player    Player   @relation(fields: [playerId], references: [id])
+  season    Season   @relation(fields: [seasonId], references: [id])
 
   @@unique([playerId, seasonId, type])
   @@map("awards")
 }
 
-/// Transfer market records (completed moves between teams).
-model Transfer {
-  id           String   @id @default(cuid())
-  playerId     String
-  fromTeamId   String?
-  fromTeamName String?
-  toTeamId     String?
-  toTeamName   String?
-  fee          Float?
-  status       String   @default("Pending")
-  offeredAt    DateTime @default(now())
-  completedAt  DateTime?
+// ─── TRANSFER ────────────────────────────────────────────────────────────────
 
-  player Player @relation(fields: [playerId], references: [discordId])
+model Transfer {
+  id            String   @id @default(cuid())
+  playerId      String
+  fromTeamId    String?
+  toTeamId      String?
+  fromTeamName  String?
+  toTeamName    String?
+  fee           Int?     // Transfer fee (in millions or currency unit)
+  status        String   @default("Pending") // Pending, Completed, Cancelled
+  completedAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  player        Player   @relation("FromPlayer", fields: [playerId], references: [id])
 
   @@map("transfers")
 }
 
-/// User warnings issued by moderation.
+// ─── WARNINGS & SUSPENSIONS ──────────────────────────────────────────────────
+
 model Warning {
   id        String   @id @default(cuid())
   userId    String
   reason    String
-  issuedBy  String
+  issuedBy  String   // Discord ID of who issued
   createdAt DateTime @default(now())
 
-  user DiscordUser @relation(fields: [userId], references: [discordId])
+  user      DiscordUser @relation(fields: [userId], references: [id])
 
   @@map("warnings")
 }
 
-/// User suspensions from the league.
 model Suspension {
-  id        String    @id @default(cuid())
+  id        String   @id @default(cuid())
   userId    String
   reason    String
   issuedBy  String
-  active    Boolean   @default(true)
   expiresAt DateTime?
-  createdAt DateTime  @default(now())
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  user DiscordUser @relation(fields: [userId], references: [discordId])
+  user      DiscordUser @relation(fields: [userId], references: [id])
 
   @@map("suspensions")
 }
 
-/// System-wide blacklist entries.
 model Blacklist {
   id        String   @id @default(cuid())
   discordId String   @unique
@@ -341,19 +333,190 @@ model Blacklist {
   issuedBy  String
   createdAt DateTime @default(now())
 
-  @@map("blacklists")
+  @@map("blacklist")
 }
 
-/// Announcements and news articles published to Discord channels.
+// ─── GUILD CONFIG ────────────────────────────────────────────────────────────
+
+model GuildConfig {
+  id          String   @id @default(cuid())
+  guildId     String   @unique
+  newsChannelId String?
+  staffRoleId   String?
+  demandsChannelId String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("guild_config")
+}
+
+// ─── NEWS / ANNOUNCEMENTS ────────────────────────────────────────────────────
+
 model NewsArticle {
   id        String   @id @default(cuid())
   guildId   String
-  type      String
+  type      String   // match_result, transfer, award, season, milestone, broadcast
   title     String
-  content   String
+  content   String   @db.Text
+  imageUrl  String?
   messageId String?
   channelId String?
   createdAt DateTime @default(now())
 
   @@map("news_articles")
+}
+
+// ─── CONTRACT ────────────────────────────────────────────────────────────────
+
+model Contract {
+  id            String   @id @default(cuid())
+  playerId      String
+  teamId        String
+  teamName      String   @default("")
+  roleInTeam    String?  // Captain, Vice Captain, Starter, Sub, Academy
+  signedAt      DateTime @default(now())
+  expiresAt     DateTime?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  player        Player   @relation(fields: [playerId], references: [id])
+  team          Team     @relation(fields: [teamId], references: [id])
+
+  @@map("contracts")
+}
+
+// ─── LINEUP ──────────────────────────────────────────────────────────────────
+
+model Lineup {
+  id            String   @id @default(cuid())
+  matchId       String
+  teamId        String
+  captainId     String?
+  formation     String?  // e.g. "4-4-2", "4-3-3"
+  submittedAt   DateTime @default(now())
+  isConfirmed   Boolean  @default(false)
+
+  match         Match    @relation(fields: [matchId], references: [id])
+  team          Team     @relation(fields: [teamId], references: [id])
+  players       LineupPlayer[]
+
+  @@map("lineups")
+}
+
+model LineupPlayer {
+  id       String  @id @default(cuid())
+  lineupId String
+  playerId String
+  matchId  String
+  position String? // The position in the lineup (GK, LB, CB, CM, ST, etc.)
+  isBench  Boolean @default(false)
+  order    Int     @default(0) // Display order
+
+  lineup   Lineup  @relation(fields: [lineupId], references: [id])
+  player   Player  @relation(fields: [playerId], references: [id])
+  match    Match   @relation(fields: [matchId], references: [id])
+
+  @@map("lineup_players")
+}
+
+// ─── DISPUTE ─────────────────────────────────────────────────────────────────
+
+model Dispute {
+  id            String   @id @default(cuid())
+  matchId       String
+  reporterId    String   // Discord ID
+  reason        String   @db.Text
+  evidenceUrl   String?  // Link to clip/screenshot evidence
+  status        String   @default("Open") // Open, Under Review, Resolved, Dismissed
+  resolvedBy    String?  // Discord ID of who resolved
+  resolution    String?  // Resolution notes
+  ticketChannelId String? // Discord channel ID for the ticket
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  match         Match    @relation(fields: [matchId], references: [id])
+
+  @@map("disputes")
+}
+
+// ─── PREDICTION ──────────────────────────────────────────────────────────────
+
+model Prediction {
+  id              String   @id @default(cuid())
+  matchId         String
+  userId          String   // Discord ID of predictor
+  predictedTeamId String   // Which team they predict will win (or null for draw)
+  predictedDraw   Boolean  @default(false)
+  points          Int      @default(0)
+  resolved        Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  match           Match    @relation(fields: [matchId], references: [id])
+
+  @@unique([matchId, userId])
+  @@map("predictions")
+}
+
+// ─── WEEKLY AWARDS ──────────────────────────────────────────────────────────
+
+model WeeklyAward {
+  id          String   @id @default(cuid())
+  type        String   // potw (Player of Week), totw (Team of Week)
+  playerId    String?
+  teamId      String?
+  seasonId    String
+  weekNumber  Int
+  reason      String?
+  awardedAt   DateTime @default(now())
+
+  season      Season   @relation(fields: [seasonId], references: [id])
+  player      Player?  @relation(fields: [playerId], references: [id])
+
+  @@map("weekly_awards")
+}
+
+// ─── MOTM (Man of the Match) Poll ───────────────────────────────────────────
+
+model MotmPoll {
+  id        String   @id @default(cuid())
+  matchId   String   @unique
+  messageId String?  // Discord message ID of the poll
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  match     Match    @relation(fields: [matchId], references: [id])
+  votes     MotmVote[]
+
+  @@map("motm_polls")
+}
+
+model MotmVote {
+  id        String   @id @default(cuid())
+  pollId    String
+  voterId   String   // Discord ID of voter
+  playerId  String   // Player they voted for
+  createdAt DateTime @default(now())
+
+  poll      MotmPoll @relation(fields: [pollId], references: [id])
+  player    Player   @relation(fields: [playerId], references: [id])
+
+  @@unique([pollId, voterId])
+  @@map("motm_votes")
+}
+
+// ─── WAITLIST ────────────────────────────────────────────────────────────────
+
+model WaitlistEntry {
+  id        String   @id @default(cuid())
+  guildId   String
+  discordId String
+  username  String
+  position  String
+  region    String
+  note      String?
+  addedAt   DateTime @default(now())
+
+  @@unique([guildId, discordId])
+  @@map("waitlist_entries")
 }
