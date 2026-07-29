@@ -1,6 +1,6 @@
 import {
   SlashCommandBuilder,
-  CommandInteraction,
+  ChatInputCommandInteraction,
   EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
@@ -8,31 +8,26 @@ import {
 } from "discord.js";
 import { prisma } from "../../database/prisma.js";
 import { contractService } from "../../services/contractService.js";
-import { createErrorEmbed, formatDate } from "../../utils/helpers.js";
+import {
+  createErrorEmbed,
+  formatDate,
+  BRAND,
+  getPositionMeta,
+  getPositionEmoji,
+} from "../../utils/helpers.js";
 import type { Command } from "../../types/index.js";
 
-const POSITION_EMOJIS: Record<string, string> = {
-  Goalkeeper: "🧤",
-  Defender: "🛡️",
-  Midfielder: "⚡",
-  Forward: "⚽",
-};
-
-const ROLE_EMOJIS: Record<string, string> = {
-  Captain: "👑",
-  "Vice Captain": "⭐",
-  Starter: "🏃",
-  Sub: "🔄",
-  Academy: "📚",
+const ROLE_BADGES: Record<string, { emoji: string; color: number }> = {
+  Captain: { emoji: "👑", color: 0xffd700 },
+  "Vice Captain": { emoji: "⭐", color: 0xc0c0c0 },
+  Starter: { emoji: "🏃", color: 0x22c55e },
+  Sub: { emoji: "🔄", color: 0xf59e0b },
+  Academy: { emoji: "📚", color: 0x6366f1 },
 };
 
 const REGION_FLAGS: Record<string, string> = {
-  Europe: "🌍",
-  Asia: "🌏",
-  Africa: "🌍",
-  "North America": "🌎",
-  "South America": "🌎",
-  Oceania: "🌏",
+  Europe: "🇪🇺", Asia: "🌏", Africa: "🌍",
+  "North America": "🇺🇸", "South America": "🇧🇷", Oceania: "🇦🇺",
 };
 
 const command: Command = {
@@ -46,12 +41,10 @@ const command: Command = {
         .setRequired(false)
     ),
 
-  async execute(interaction: CommandInteraction) {
-    if (!interaction.isChatInputCommand()) return;
+  async execute(interaction: ChatInputCommandInteraction) {
     await interaction.deferReply();
 
-    const target =
-      interaction.options.getUser("player") ?? interaction.user;
+    const target = interaction.options.getUser("player") ?? interaction.user;
 
     try {
       const player = await prisma.player.findUnique({
@@ -79,88 +72,83 @@ const command: Command = {
         return;
       }
 
-      const posEmoji = POSITION_EMOJIS[player.position] || "🎯";
+      const pos = getPositionMeta(player.position);
       const regionFlag = REGION_FLAGS[player.region] || "🌐";
-      const roleEmoji = player.roleInTeam
-        ? ROLE_EMOJIS[player.roleInTeam] || ""
-        : "";
-
-      // ── Identity Badges ──
-      const statusBadge = player.team
-        ? `${player.team.emoji || "🏟️"} **Signed**`
-        : "🆓 **Free Agent**";
-      const contractBadge = player.contracts.length > 0 ? "✅ **Active**" : "📄 **No Contract**";
+      const roleBadge = player.roleInTeam ? ROLE_BADGES[player.roleInTeam] : null;
+      const embedColor = player.team
+        ? (roleBadge?.color ?? BRAND.colors.primary)
+        : BRAND.colors.muted;
 
       // ── Build the embed ──
       const embed = new EmbedBuilder()
-        .setTitle(`🎴 ${target.username} — Player Account`)
-        .setColor(player.team ? 0x6366f1 : 0x6b7280)
-        .setThumbnail(target.displayAvatarURL({ size: 256 }))
-        .setDescription(
-          `*Identity card for the Legacy Football Championship*\n\n` +
-            `${posEmoji} **${player.position}**` +
-            (player.team ? ` · ${player.team.emoji || "🏟️"} **${player.team.name}**` : "") +
-            (player.roleInTeam ? ` · ${roleEmoji} **${player.roleInTeam}**` : "")
-        )
+        .setTitle(`${pos.emoji} ${target.username}`)
+        .setColor(embedColor)
+        .setThumbnail(target.displayAvatarURL({ size: 512 }))
+        .setDescription([
+          `**LFC ID:** \`${player.lfcId}\``,
+          `━━━━━━━━━━━━━━━━━━`,
+          `${player.team ? `${player.team.emoji || "🏟️"} **${player.team.name}**` : "🆓 **Free Agent**"}` +
+            ` · ${pos.emoji} **${pos.fullName}** (${player.position})`,
+          player.nickname ? `📛 \`${player.nickname}\`` : "",
+        ].filter(Boolean).join("\n"))
         .addFields(
           {
-            name: "🆔 Identity",
+            name: "👤 Identity",
             value: [
-              `**LFC ID:** \`${player.lfcId}\``,
-              `**Discord:** ${target.username} (\`${target.id}\`)`,
+              `**Discord:** ${target.username}`,
               player.robloxUsername
-                ? `**Roblox:** ${player.robloxUsername}`
+                ? `**Roblox:** \`${player.robloxUsername}\``
                 : "**Roblox:** ❌ Not linked",
-            ].join("\n"),
-            inline: true,
-          },
-          {
-            name: "⚽ Club Info",
-            value: [
-              `**Status:** ${statusBadge}`,
-              `**Position:** ${posEmoji} ${player.position}`,
               `**Region:** ${regionFlag} ${player.region}`,
-              player.nickname
-                ? `**Nickname:** \`${player.nickname}\``
-                : "**Nickname:** None",
             ].join("\n"),
             inline: true,
           },
           {
-            name: "📜 Registration",
+            name: `${player.team ? "🏟️" : "📋"} Status`,
             value: [
+              player.roleInTeam
+                ? `**Role:** ${roleBadge?.emoji || ""} ${player.roleInTeam}`
+                : "**Role:** Unassigned",
               `**Since:** ${formatDate(player.joinedAt)}`,
-              `**Role:** ${roleEmoji || "—"} ${player.roleInTeam ?? "Unassigned"}`,
-              `**Contract:** ${contractBadge}`,
+              player.contracts.length > 0
+                ? "**Contract:** ✅ Active"
+                : "**Contract:** 📄 None",
             ].join("\n"),
-            inline: false,
+            inline: true,
           },
           {
-            name: "🏆 Career Snapshot",
+            name: "🏆 Career",
             value: [
               `**Apps:** ${player.appearances}`,
-              `**Goals:** ${player.goals} | **Assists:** ${player.assists}`,
-              `**MVP:** ${player.mvps} | **Trophies:** ${player.trophies}`,
-              `**Cards:** 🟨 ${player.yellowCards} · 🟥 ${player.redCards}`,
-            ].join("  ·  "),
+              `**Goals:** ${player.goals}  ·  **Assists:** ${player.assists}`,
+              `**MVP:** ${player.mvps}  ·  **Trophies:** ${player.trophies}`,
+              `🟨 ${player.yellowCards}  ·  🟥 ${player.redCards}`,
+            ].join("\n"),
             inline: false,
           }
         )
         .setFooter({
-          text: `Legacy Football Championship ${player.team ? `• ${player.team.name}` : ""}`,
+          text: player.team
+            ? `${BRAND.footer} • ${player.team.name}`
+            : BRAND.footer,
+          iconURL: target.displayAvatarURL(),
         })
         .setTimestamp();
 
-      // If they have an active contract, show extra detail
       if (player.contracts.length > 0) {
         const c = player.contracts[0];
+        const cRoleBadge = c.roleInTeam ? ROLE_BADGES[c.roleInTeam] : null;
         embed.addFields({
           name: "📋 Active Contract",
           value: [
-            `**Contract ID:** \`${c.id.slice(0, 12)}…\``,
+            `**ID:** \`${c.id.slice(0, 12)}…\``,
             `**Signed:** ${formatDate(c.signedAt)}`,
-            c.roleInTeam ? `**Role:** ${ROLE_EMOJIS[c.roleInTeam] || ""} ${c.roleInTeam}` : null,
-            c.expiresAt ? `**Expires:** ${formatDate(c.expiresAt)}` : "**Expires:** Indefinite",
+            c.roleInTeam
+              ? `**Role:** ${cRoleBadge?.emoji || ""} ${c.roleInTeam}`
+              : null,
+            c.expiresAt
+              ? `**Expires:** ${formatDate(c.expiresAt)}`
+              : "**Expires:** Indefinite",
           ]
             .filter(Boolean)
             .join("\n"),
@@ -168,19 +156,16 @@ const command: Command = {
         });
       }
 
-      // Show a quick-action row
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
-          .setCustomId("disabled_placeholder")
-          .setLabel(`LFC ID: ${player.lfcId}`)
+          .setCustomId("_account_id")
+          .setLabel(`🆔 ${player.lfcId}`)
           .setStyle(ButtonStyle.Secondary)
           .setDisabled(true),
         new ButtonBuilder()
-          .setLabel("View Profile")
+          .setLabel("Open Discord Profile")
           .setStyle(ButtonStyle.Link)
-          .setURL(
-            `https://discord.com/users/${target.id}`
-          ),
+          .setURL(`https://discord.com/users/${target.id}`),
       );
 
       await interaction.editReply({ embeds: [embed], components: [row] });
