@@ -40,7 +40,7 @@ const command: Command = {
         allPlayers.map((p) => ({
           label: p.user.username,
           value: p.id,
-          description: `${p.position} — ${p.team?.name ?? "Unknown"}`,
+          description: `${p.position} — ${(p as any).team?.name ?? "Unknown"}`,
           emoji: getPosEmoji(p.position),
         }))
       );
