@@ -2,6 +2,7 @@ import {
   SlashCommandBuilder,
   ChatInputCommandInteraction,
   EmbedBuilder,
+  PermissionFlagsBits,
 } from "discord.js";
 import { teamService } from "../../services/teamService.js";
 import { prisma } from "../../database/prisma.js";
@@ -46,6 +47,14 @@ const command: Command = {
 };
 
 async function handleList(interaction: ChatInputCommandInteraction): Promise<void> {
+  // Admin only — teams list shows controlled franchise info
+  if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) {
+    await interaction.editReply({
+      embeds: [createErrorEmbed("❌ Admin Only", "Only administrators can view the teams list.")]
+    });
+    return;
+  }
+
   const teams = await prisma.team.findMany({
     include: {
       manager: true,
