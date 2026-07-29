@@ -1,6 +1,6 @@
 import {
   SlashCommandBuilder,
-  CommandInteraction,
+  ChatInputCommandInteraction,
   EmbedBuilder,
 } from "discord.js";
 import { teamService } from "../../services/teamService.js";
@@ -81,7 +81,7 @@ const command: Command = {
         )
     ),
 
-  async execute(interaction: CommandInteraction) {
+  async execute(interaction: ChatInputCommandInteraction) {
     if (!interaction.isChatInputCommand()) return;
     const subcommand = interaction.options.getSubcommand();
 
@@ -100,7 +100,7 @@ const command: Command = {
   },
 };
 
-async function handleCreate(interaction: CommandInteraction): Promise<void> {
+async function handleCreate(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply();
 
   // Permission check
@@ -214,7 +214,7 @@ async function handleCreate(interaction: CommandInteraction): Promise<void> {
   }
 }
 
-async function handleInfo(interaction: CommandInteraction): Promise<void> {
+async function handleInfo(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply();
 
   const teamName = interaction.options.getString("name", true);
@@ -307,7 +307,7 @@ async function handleInfo(interaction: CommandInteraction): Promise<void> {
   }
 }
 
-async function handleRoster(interaction: CommandInteraction): Promise<void> {
+async function handleRoster(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply();
 
   const teamName = interaction.options.getString("name", true);
@@ -390,7 +390,7 @@ function getPositionEmoji(position: Position): string {
   }
 }
 
-async function handleStats(interaction: CommandInteraction): Promise<void> {
+async function handleStats(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply();
 
   const teamName = interaction.options.getString("name", true);
