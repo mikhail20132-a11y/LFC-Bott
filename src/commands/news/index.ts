@@ -132,7 +132,7 @@ async function handleSetChannel(interaction: ChatInputCommandInteraction): Promi
 
   const embed = new EmbedBuilder()
     .setTitle("📢 News Channel Configured!")
-    .setColor("#00AA00")
+    .setColor(BRAND.colors.success)
     .setDescription(
       `All auto-news will now be posted in ${channel}.`
     )
@@ -170,7 +170,7 @@ async function handleLatest(interaction: ChatInputCommandInteraction): Promise<v
 
     const embed = new EmbedBuilder()
       .setTitle("📰 Latest LFC News")
-      .setColor("#00AA00");
+      .setColor(BRAND.colors.success);
 
     if (articles.length > 0) {
       embed.setDescription(
