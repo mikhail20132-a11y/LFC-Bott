@@ -1,6 +1,8 @@
 import type { GuildMember } from "discord.js";
 
 export enum RoleType {
+  Founder = "founder",
+  LeagueManagement = "league-management",
   Manager = "manager",
   AssistantManager = "assistant-manager",
   Moderator = "moderator",
@@ -8,8 +10,10 @@ export enum RoleType {
 }
 
 const ROLE_NAMES: Record<RoleType, string[]> = {
-  [RoleType.Manager]: ["Manager", "GM", "General Manager", "LFC Manager", "Founder", "Owner", "LFC Founder"],
-  [RoleType.AssistantManager]: ["Assistant Manager", "Asst. Manager", "Asst Manager", "Assistant GM", "League Management", "League Admin", "Commissioner"],
+  [RoleType.Founder]: ["Founder", "Owner", "LFC Founder", "Creator", "LFC Owner"],
+  [RoleType.LeagueManagement]: ["League Management", "League Admin", "Commissioner", "League Commissioner"],
+  [RoleType.Manager]: ["Manager", "GM", "General Manager", "LFC Manager"],
+  [RoleType.AssistantManager]: ["Assistant Manager", "Asst. Manager", "Asst Manager", "Assistant GM"],
   [RoleType.Moderator]: ["Moderator", "Mod", "Staff"],
   [RoleType.Referee]: ["Referee", "Match Official", "Ref"],
 };
