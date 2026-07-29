@@ -81,7 +81,7 @@ async function handleStandings(interaction: ChatInputCommandInteraction): Promis
 
     const embed = new EmbedBuilder()
       .setTitle(`🏆 ${activeSeason.name} — League Standings`)
-      .setColor("#00AA00")
+      .setColor(BRAND.colors.success)
       .setDescription(
         standings.length > 0
           ? standings
@@ -129,7 +129,7 @@ async function handleFixtures(interaction: ChatInputCommandInteraction): Promise
 
     const embed = new EmbedBuilder()
       .setTitle("📅 Upcoming Fixtures")
-      .setColor("#00AA00");
+      .setColor(BRAND.colors.success);
 
     if (fixtures.length > 0) {
       for (const match of fixtures) {
@@ -174,7 +174,7 @@ async function handleResults(interaction: ChatInputCommandInteraction): Promise<
 
     const embed = new EmbedBuilder()
       .setTitle("📋 Recent Results")
-      .setColor("#00AA00");
+      .setColor(BRAND.colors.success);
 
     if (results.length > 0) {
       for (const match of results) {
@@ -278,7 +278,7 @@ async function handleHistory(interaction: ChatInputCommandInteraction): Promise<
 
     const embed = new EmbedBuilder()
       .setTitle(`📊 Head-to-Head: ${team1.name} vs ${team2.name}`)
-      .setColor("#00AA00")
+      .setColor(BRAND.colors.success)
       .addFields(
         {
           name: `🏠 ${team1.name}`,
