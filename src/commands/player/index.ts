@@ -372,7 +372,7 @@ async function showLeaderboard(
 
     await selectInteraction.deferUpdate();
     await showLeaderboard(
-      selectInteraction as unknown as CommandInteraction,
+      selectInteraction as unknown as any,
       selectInteraction.values[0]
     );
   });
