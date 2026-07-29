@@ -14,7 +14,7 @@ import {
   handlePanelSelect,
   showMainPanel,
 } from "../services/panelHandler.js";
-import type { ExtendedClient } from "../types/index.js";
+import type { ExtendedClient, TeamRole } from "../types/index.js";
 
 const event = {
   name: Events.InteractionCreate,
@@ -54,15 +54,16 @@ const event = {
       return;
     }
 
-    // Cooldown check
+    // Cooldown check using a WeakMap attached to client
     const cooldownKey = `${interaction.user.id}-${command.data.name}`;
     const cooldownAmount = (command.cooldown ?? 3) * 1000;
     const now = Date.now();
 
-    if (!("cooldowns" in client)) {
-      (client as Record<string, unknown>).cooldowns = new Map();
+    // Use a property on the client for cooldowns
+    if (!(client as any).cooldowns) {
+      (client as any).cooldowns = new Map();
     }
-    const cooldowns = (client as Record<string, unknown>).cooldowns as Map<string, number>;
+    const cooldowns = (client as any).cooldowns as Map<string, number>;
 
     if (cooldowns.has(cooldownKey)) {
       const expiration = cooldowns.get(cooldownKey)!;
@@ -146,7 +147,7 @@ async function handleOfferButton(interaction: ButtonInteraction) {
 
     try {
       const { player, contract, team } = await contractService.offerContract(
-        offer.contractData
+        offer.contractData as Parameters<typeof contractService.offerContract>[0]
       );
 
       // Fetch guild from client since interaction is from DM (no guild context)
