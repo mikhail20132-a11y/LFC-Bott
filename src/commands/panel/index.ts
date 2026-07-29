@@ -1,8 +1,9 @@
 import {
   SlashCommandBuilder,
   CommandInteraction,
+  PermissionFlagsBits,
+  GuildMember,
 } from "discord.js";
-import { hasRole, RoleType } from "../../utils/permissions.js";
 import { createErrorEmbed } from "../../utils/helpers.js";
 import { showMainPanel } from "../../services/panelHandler.js";
 import type { Command } from "../../types/index.js";
@@ -10,7 +11,8 @@ import type { Command } from "../../types/index.js";
 const command: Command = {
   data: new SlashCommandBuilder()
     .setName("panel")
-    .setDescription("Open the LFC Management Control Panel (Manager/Assistant Manager only)")
+    .setDescription("Open the LFC Management Control Panel (Admin only)")
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .addStringOption((opt) =>
       opt
         .setName("section")
@@ -28,15 +30,13 @@ const command: Command = {
     if (!interaction.isChatInputCommand()) return;
     await interaction.deferReply({ ephemeral: true });
 
-    if (
-      !hasRole(interaction.member as never, RoleType.Manager) &&
-      !hasRole(interaction.member as never, RoleType.AssistantManager)
-    ) {
+    const member = interaction.member as GuildMember | null;
+    if (!member || !member.permissions.has(PermissionFlagsBits.Administrator)) {
       await interaction.editReply({
         embeds: [
           createErrorEmbed(
             "Access Denied",
-            "The Management Panel is restricted to **Manager** and **Assistant Manager** roles only."
+            "The Management Panel is restricted to **Administrators** only."
           ),
         ],
       });
