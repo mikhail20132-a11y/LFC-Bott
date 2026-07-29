@@ -2,6 +2,13 @@ import { prisma } from "../database/prisma.js";
 
 export class AdminService {
   /**
+   * Alias for backward compatibility.
+   */
+  async createWarning(discordId: string, reason: string, issuedBy: string) {
+    return this.warnUser(discordId, reason, issuedBy);
+  }
+
+  /**
    * Issue a warning to a user.
    */
   async warnUser(discordId: string, reason: string, issuedBy: string) {
@@ -18,6 +25,18 @@ export class AdminService {
       where: { userId: discordId },
       orderBy: { createdAt: "desc" },
     });
+  }
+
+  /**
+   * Alias for backward compatibility.
+   */
+  async createSuspension(
+    discordId: string,
+    reason: string,
+    issuedBy: string,
+    expiresAt?: Date
+  ) {
+    return this.suspendUser(discordId, reason, issuedBy, expiresAt);
   }
 
   /**
