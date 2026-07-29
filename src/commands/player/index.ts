@@ -92,7 +92,7 @@ async function handleProfile(interaction: ChatInputCommandInteraction): Promise<
         .setDescription(
           `${targetUser.username} is not registered as an LFC player yet. They need to play their first match to be registered.`
         )
-        .setColor("#FF0000")
+        .setColor(BRAND.colors.danger)
         .setTimestamp();
 
       await interaction.editReply({ embeds: [embed] });
@@ -144,7 +144,7 @@ async function handleProfile(interaction: ChatInputCommandInteraction): Promise<
     const embed = new EmbedBuilder()
       .setTitle(`${targetUser.username} — LFC Profile`)
       .setThumbnail(targetUser.displayAvatarURL())
-      .setColor("#00AA00")
+      .setColor(BRAND.colors.success)
       .addFields(
         {
           name: "👤 General",
@@ -215,7 +215,7 @@ async function handleStats(interaction: ChatInputCommandInteraction): Promise<vo
     const embed = new EmbedBuilder()
       .setTitle(`📊 ${targetUser.username} — Career Statistics`)
       .setThumbnail(targetUser.displayAvatarURL())
-      .setColor("#00AA00");
+      .setColor(BRAND.colors.success);
 
     // Per-season breakdown
     if (player.seasonStats.length > 0) {
@@ -320,7 +320,7 @@ async function showLeaderboard(
 
   const embed = new EmbedBuilder()
     .setTitle(title)
-    .setColor("#00AA00")
+    .setColor(BRAND.colors.success)
     .setDescription(
       players.length > 0
         ? players
