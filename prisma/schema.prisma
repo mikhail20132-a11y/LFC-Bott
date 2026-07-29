@@ -339,13 +339,18 @@ model Blacklist {
 // ─── GUILD CONFIG ────────────────────────────────────────────────────────────
 
 model GuildConfig {
-  id          String   @id @default(cuid())
-  guildId     String   @unique
-  newsChannelId String?
-  staffRoleId   String?
-  demandsChannelId String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  guildId            String   @unique
+  newsChannelId      String?
+  staffRoleId        String?
+  demandsChannelId   String?
+  appointmentsChannelId String?
+  signingsChannelId  String?
+  signingsEnabled    Boolean  @default(true)
+  signingChoice      String   @default("offer")    // "sign" or "offer"
+  rosterCap          Int      @default(30)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   @@map("guild_config")
 }
