@@ -2,9 +2,9 @@ import {
   SlashCommandBuilder,
   ChatInputCommandInteraction,
   EmbedBuilder,
-  PermissionFlagsBits,
 } from "discord.js";
 import { prisma } from "../../database/prisma.js";
+import { hasRole, RoleType } from "../../utils/permissions.js";
 import { createSuccessEmbed, createErrorEmbed, BRAND } from "../../utils/helpers.js";
 import type { Command } from "../../types/index.js";
 
@@ -23,7 +23,6 @@ const command: Command = {
   data: new SlashCommandBuilder()
     .setName("promote")
     .setDescription("Promote a player to a team role (Captain, Vice Captain, etc.)")
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .addUserOption((opt) =>
       opt.setName("player").setDescription("The player to promote").setRequired(true)
     )
@@ -34,6 +33,12 @@ const command: Command = {
 
   async execute(interaction: ChatInputCommandInteraction) {
     await interaction.deferReply();
+
+    if (!hasRole(interaction.member as never, RoleType.Manager) &&
+        !hasRole(interaction.member as never, RoleType.AssistantManager)) {
+      await interaction.editReply({ embeds: [createErrorEmbed("❌ Insufficient Permissions", "You need **Manager** or **Assistant Manager** role.")] });
+      return;
+    }
 
     const targetUser = interaction.options.getUser("player", true);
     const roleValue = interaction.options.getString("role", true);
