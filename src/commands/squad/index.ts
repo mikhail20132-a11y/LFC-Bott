@@ -30,7 +30,7 @@ const command: Command = {
 
     const embed = new EmbedBuilder()
       .setTitle(`👥 ${team.name} — Full Squad`)
-      .setColor("#00AA00")
+      .setColor(BRAND.colors.success)
       .setDescription(
         team.players.length
           ? `**Manager:** <@${team.manager.discordId}> | **Total:** ${team.players.length} players`
