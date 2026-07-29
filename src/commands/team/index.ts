@@ -161,10 +161,21 @@ async function handleCreate(interaction: ChatInputCommandInteraction): Promise<v
           reason: `LFC Team role for ${name}`,
         });
         roleId = role.id;
+
+        // Also assign Manager/Asst Manager role to the creator
+        const creatorMember = await interaction.guild.members.fetch(managerDiscordId);
+        const isManager = hasRole(interaction.member as never, RoleType.Manager);
+        const manageRoleName = isManager ? "Manager" : "Assistant Manager";
+        const manageRole = interaction.guild.roles.cache.find(
+          (r) => r.name.toLowerCase() === manageRoleName.toLowerCase()
+        );
+        if (manageRole) {
+          await creatorMember.roles.add(manageRole, `Created team ${name}`);
+        }
       }
     } catch (roleErr) {
       console.error("[Role Create Error]", roleErr);
-      // Non-critical - team still created without a role
+      // Non-critical
     }
 
     const team = await teamService.createTeam({
