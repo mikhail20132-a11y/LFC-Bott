@@ -327,7 +327,7 @@ async function showLeaderboard(
             .map(
               (p, i) =>
                 `${i + 1}. **${p.user.globalName ?? p.user.username}**` +
-                `${p.team ? ` (${p.team.name})` : ""} — **${(p as Record<string, number>)[valueKey]}**`
+                `${p.team ? ` (${p.team.name})` : ""} — **${(p as any)[valueKey]}**`
             )
             .join("\n")
         : "No data available yet."
