@@ -1,99 +1,101 @@
 import {
   SlashCommandBuilder,
-  CommandInteraction,
+  ChatInputCommandInteraction,
   EmbedBuilder,
+  PermissionFlagsBits,
 } from "discord.js";
 import { prisma } from "../../database/prisma.js";
-import { hasRole, RoleType } from "../../utils/permissions.js";
-import { createSuccessEmbed, createErrorEmbed } from "../../utils/helpers.js";
+import { createSuccessEmbed, createErrorEmbed, BRAND } from "../../utils/helpers.js";
 import type { Command } from "../../types/index.js";
+
+const PROMOTE_ROLES = [
+  { name: "👑 Captain", value: "Captain" },
+  { name: "⭐ Vice Captain", value: "Vice Captain" },
+  { name: "🏃 Starter", value: "Starter" },
+  { name: "📚 Academy", value: "Academy" },
+];
+
+const TEAM_ROLE_EMOJIS: Record<string, string> = {
+  Captain: "👑", "Vice Captain": "⭐", Starter: "🏃", Sub: "🔄", Academy: "📚",
+};
 
 const command: Command = {
   data: new SlashCommandBuilder()
     .setName("promote")
-    .setDescription("Promote a player to a leadership role (Captain / Vice Captain)")
+    .setDescription("Promote a player to a team role (Captain, Vice Captain, etc.)")
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .addUserOption((opt) =>
-      opt
-        .setName("player")
-        .setDescription("The player to promote")
-        .setRequired(true)
+      opt.setName("player").setDescription("The player to promote").setRequired(true)
     )
     .addStringOption((opt) =>
-      opt
-        .setName("role")
-        .setDescription("Leadership role to assign")
-        .setRequired(true)
-        .addChoices(
-          { name: "Captain", value: "Captain" },
-          { name: "Vice Captain", value: "Vice Captain" }
-        )
+      opt.setName("role").setDescription("Team role to assign").setRequired(true)
+        .addChoices(...PROMOTE_ROLES)
     ),
 
-  async execute(interaction: CommandInteraction) {
-    if (!interaction.isChatInputCommand()) return;
+  async execute(interaction: ChatInputCommandInteraction) {
     await interaction.deferReply();
 
-    const member = interaction.member as import("discord.js").GuildMember | null;
-    if (
-      !member ||
-      (!hasRole(member, RoleType.Founder) &&
-        !hasRole(member, RoleType.LeagueManagement))
-    ) {
-      await interaction.editReply({
-        embeds: [
-          createErrorEmbed(
-            "❌ Insufficient Permissions",
-            "You need the **Founder** or **League Management** role to promote players."
-          ),
-        ],
-      });
-      return;
-    }
-
     const targetUser = interaction.options.getUser("player", true);
-    const roleValue = interaction.options.getString("role", true) as
-      | "Captain"
-      | "Vice Captain";
+    const roleValue = interaction.options.getString("role", true);
+    const emoji = TEAM_ROLE_EMOJIS[roleValue] || "📌";
 
     try {
       const player = await prisma.player.findUnique({
         where: { discordId: targetUser.id },
+        include: { team: true, user: true },
       });
 
       if (!player) {
         await interaction.editReply({
-          embeds: [
-            createErrorEmbed(
-              "❌ Player Not Found",
-              `${targetUser.username} is not registered as an LFC player.`
-            ),
-          ],
+          embeds: [createErrorEmbed("❌ Player Not Found", `${targetUser.username} is not registered.`)],
         });
         return;
       }
 
       await prisma.player.update({
         where: { discordId: targetUser.id },
-        data: { roleInTeam: roleValue },
+        data: { roleInTeam: roleValue as any },
       });
 
-      const embed = createSuccessEmbed(
-        "✅ Player Promoted",
-        `${targetUser} has been promoted to **${roleValue}**!`
-      );
-      embed.setColor("#FFD700");
+      const embed = new EmbedBuilder()
+        .setTitle(`${emoji} Player Promoted`)
+        .setColor(BRAND.colors.success)
+        .setDescription(`${targetUser} has been promoted to **${roleValue}**`)
+        .addFields(
+          { name: "👤 Player", value: `${targetUser}`, inline: true },
+          { name: "📌 Role", value: `${emoji} ${roleValue}`, inline: true },
+          player.team ? { name: "🏟️ Team", value: `${player.team.emoji || ""} ${player.team.name}`, inline: true } : null,
+        )
+        .filter((f: any) => f)
+        .setFooter({ text: BRAND.footer })
+        .setTimestamp();
 
       await interaction.editReply({ embeds: [embed] });
+
+      // Post to news channel
+      if (interaction.guild) {
+        try {
+          const config = await prisma.guildConfig.findUnique({ where: { guildId: interaction.guild.id } });
+          if (config?.newsChannelId) {
+            const channel = interaction.guild.channels.cache.get(config.newsChannelId);
+            if (channel?.isTextBased()) {
+              await channel.send({
+                embeds: [
+                  new EmbedBuilder()
+                    .setTitle(`${emoji} Promotion`)
+                    .setColor(BRAND.colors.success)
+                    .setDescription(`${targetUser} promoted to **${roleValue}**${player.team ? ` for ${player.team.emoji || ""} ${player.team.name}` : ""}`)
+                    .setFooter({ text: BRAND.footer })
+                    .setTimestamp(),
+                ],
+              });
+            }
+          }
+        } catch {}
+      }
     } catch (error) {
       console.error("[Promote Error]", error);
-      await interaction.editReply({
-        embeds: [
-          createErrorEmbed(
-            "❌ Error",
-            "An error occurred while promoting the player."
-          ),
-        ],
-      });
+      await interaction.editReply({ embeds: [createErrorEmbed("❌ Error", "Failed to promote player.")] });
     }
   },
 };
